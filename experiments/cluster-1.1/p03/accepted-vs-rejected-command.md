@@ -43,21 +43,50 @@ Actor context is changed while the requested order content remains equivalent.
 
 ## Execution
 
-Authoritative command:
+GitHub Actions run: 37632251569
+
+Command:
 
 mvn -B -ntp verify
 
 ## Observation
 
-Pending the P03 GitHub Actions run.
+PlaceOrderSemanticFlowTest:
+- tests run: 2
+- failures: 0
+- errors: 0
+- skipped: 0
+
+Whole reactor:
+- tests run: 11
+- failures: 0
+- errors: 0
+- skipped: 0
+- BUILD SUCCESS
+
+Observed behavior matched the prediction.
 
 ## Evidence
 
-Pending CI run identifier and test output.
+Accepted path:
+- result was PlaceOrderResult.Accepted;
+- repository contained one order;
+- accepted result contained OrderPlaced;
+- fact order identity and occurrence time matched the resulting order.
+
+Rejected path:
+- result was PlaceOrderResult.Rejected;
+- rejection code was ACTOR_TYPE_NOT_ALLOWED;
+- repository remained empty;
+- Rejected type has no OrderPlaced fact.
+
+Inherited P01/P02 tests remained green.
 
 ## Interpretation
 
-If observed, the project demonstrates that receipt of a command is not itself evidence that the corresponding business fact occurred.
+Receipt of a command is not evidence that the requested business occurrence happened.
+
+The application now exposes an explicit decision outcome. Only the accepted path produces OrderPlaced.
 
 ## Limitations
 
@@ -72,4 +101,6 @@ The experiment does not establish:
 
 ## Conclusion
 
-Pending execution evidence.
+The controlled P03 execution supports the semantic distinction:
+
+request/command != accepted fact.

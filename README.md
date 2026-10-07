@@ -2,21 +2,23 @@
 
 This repository is the evolving project for Enterprise Distributed Systems Architecture & System Design — V8.0.
 
-Inherited verified checkpoint:
+Current verified learning checkpoint:
 
-C1.1-P02
-branch: checkpoints/C1.1-P02
-
-Current evolution:
-
-C1.1-P03 candidate
+C1.1-P03
 Intent, Commands, Decisions, Facts and Events
+
+Previous preserved checkpoint:
+
+checkpoints/C1.1-P02
 
 ## Verification
 
 mvn -B -ntp verify
 
-P03 is not frozen until its GitHub Actions verification completes successfully.
+P03 implementation verification:
+
+Tests run: 11, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
 
 ## Current semantic flow
 

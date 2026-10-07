@@ -1,12 +1,14 @@
-# Checkpoint Manifest — C1.1-P03 Candidate
+# Checkpoint Manifest — C1.1-P03
 
 ## Identity
 
-- Target checkpoint: C1.1-P03
-- Current status: CANDIDATE — NOT FROZEN
+- Checkpoint: C1.1-P03
+- Current status: VERIFIED AND FROZEN
 - Inherited checkpoint: C1.1-P02
 - Inherited checkpoint branch: checkpoints/C1.1-P02
 - Inherited commit: 8ceb6046b44e5fa94574972496910cef95a8b02b
+- P03 implementation commit: 3c1e6dcc4121b06552a7bc6778251d7dea664175
+- P03 verification run: 37632251569
 
 ## Engineering question
 
@@ -29,23 +31,27 @@ An explicit command decision/result model can demonstrate that a requested Place
 
 ## Test evolution
 
-- inherited actor tests now assert accepted/rejected results;
+- inherited actor tests assert accepted/rejected results;
 - service test asserts accepted result plus matching OrderPlaced fact;
-- new semantic-flow test proves accepted vs rejected command behavior;
-- inherited HTTP/domain/context tests remain part of the root verification gate.
+- PlaceOrderSemanticFlowTest proves accepted vs rejected command behavior;
+- inherited HTTP/domain/context tests remain green.
 
-## Learning assets
+## Verification
 
-- intent/command/decision/fact scenario;
-- candidate command/fact catalog;
-- semantic-flow diagram;
-- ADR-0003 domain facts without messaging;
-- controlled P03 experiment;
-- P03 evidence ledger.
+GitHub Actions executed:
+
+mvn -B -ntp verify
+
+Observed:
+
+Tests run: 11, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+
+The new semantic-flow tests passed and all inherited P01/P02 tests remained green.
 
 ## Architectural interpretation
 
-This part introduces semantic facts, not distributed messaging.
+This part introduces semantic domain facts, not distributed messaging.
 
 It does not create:
 - Kafka;
@@ -57,9 +63,24 @@ It does not create:
 - integration-event contracts;
 - service decomposition.
 
-## Evidence status
+## Evidence-qualified guarantees
 
-Pending P03 CI execution.
+Within the tested application boundary:
+- a valid PlaceOrder command can be accepted;
+- accepted PlaceOrder updates current repository state;
+- accepted PlaceOrder returns a corresponding OrderPlaced local fact;
+- invalid actor PlaceOrder can be rejected;
+- rejected actor command leaves current repository state unchanged;
+- rejected result does not carry OrderPlaced.
+
+Not guaranteed:
+- caller authentication;
+- durable fact history;
+- fact publication;
+- cross-process delivery;
+- retry/duplicate safety;
+- concurrency correctness;
+- distributed consistency.
 
 ## Known non-guarantees intentionally preserved
 
@@ -74,12 +95,3 @@ Pending P03 CI execution.
 ## Next pressure
 
 Part 1.1.4 must deepen identity and authoritative-state reasoning: what entity is being referred to, which copy/state is authoritative, and what stale/transient representations mean.
-
-## Freeze gate
-
-1. mvn -B -ntp verify succeeds;
-2. inherited tests remain green;
-3. PlaceOrderSemanticFlowTest passes;
-4. accepted result/fact correspondence is observed;
-5. rejected command leaves repository unchanged;
-6. no messaging mechanism has been introduced without evidence.
