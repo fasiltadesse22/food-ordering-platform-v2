@@ -1,0 +1,6 @@
+CORE_BASELINE_VERIFICATION: PASS
+orders.persisted=1
+placed.status=PLACED
+placed.total=11.00
+durability.guaranteed=false
+spring_http_path.verified=false
