@@ -1,113 +1,85 @@
-# Checkpoint Manifest — C1.1-P02
+# Checkpoint Manifest — C1.1-P03 Candidate
 
 ## Identity
 
-- Checkpoint: `C1.1-P02`
-- Current status: **VERIFIED AND FROZEN**
-- Inherited checkpoint: `C1.1-P01`
-- Inherited checkpoint branch: `checkpoints/C1.1-P01`
-- Inherited commit: `d6dbc93e06955e5e7d288ac6a61093e16ce09d71`
-- P02 implementation commit: `a8fbe96e179cc3ff5aadb07d483c6130e4e42de3`
-- P02 verification run: `37629067834`
+- Target checkpoint: C1.1-P03
+- Current status: CANDIDATE — NOT FROZEN
+- Inherited checkpoint: C1.1-P02
+- Inherited checkpoint branch: checkpoints/C1.1-P02
+- Inherited commit: 8ceb6046b44e5fa94574972496910cef95a8b02b
 
 ## Engineering question
 
-Who is trying to accomplish what, and which responsibility belongs to whom?
+When does requested intent become an accepted business fact?
 
 ## Prediction
 
-Explicitly representing the caller's business actor at the Place Order application boundary will allow executable responsibility checks while preserving one deployable and avoiding authentication/security infrastructure or service decomposition.
+An explicit command decision/result model can demonstrate that a requested PlaceOrder command may be accepted or rejected, and that OrderPlaced exists only on the accepted path, without introducing Kafka, an event bus, an outbox, event sourcing, or other messaging infrastructure.
 
-## Changes
+## Source evolution
 
-### Source
+- added PlaceOrderResult Accepted/Rejected variants;
+- added PlaceOrderRejection;
+- added OrderPlaced local domain fact;
+- evolved PlaceOrderUseCase return type;
+- evolved PlaceOrderService decision path;
+- evolved controller response mapping;
+- removed obsolete ActorNotAllowedException;
+- updated framework-free verification harness for result semantics.
 
-- added `ActorType`;
-- added `ActorContext`;
-- evolved `PlaceOrderCommand` to carry actor context;
-- preserved the previous constructor so the verified P01 HTTP/core path remains compatible;
-- evolved `PlaceOrderService` to reject actor/use-case responsibility violations;
-- added `ActorNotAllowedException`.
+## Test evolution
 
-### Tests
+- inherited actor tests now assert accepted/rejected results;
+- service test asserts accepted result plus matching OrderPlaced fact;
+- new semantic-flow test proves accepted vs rejected command behavior;
+- inherited HTTP/domain/context tests remain part of the root verification gate.
 
-- customer actor can execute Place Order for the same customer;
-- restaurant operator cannot execute customer Place Order;
-- customer actor cannot place for a different customer identity.
+## Learning assets
 
-### Architecture learning assets
-
-- actor/goal/responsibility/use-case catalog;
-- responsibility matrix;
-- actor/use-case diagram;
-- invalid-actor controlled experiment;
-- P02 evidence ledger.
-
-## Verification
-
-GitHub Actions executed:
-
-```bash
-mvn -B -ntp verify
-```
-
-Observed:
-
-```text
-Tests run: 9, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
-```
-
-The three P02 actor acceptance tests passed, and all inherited P01 tests remained green.
+- intent/command/decision/fact scenario;
+- candidate command/fact catalog;
+- semantic-flow diagram;
+- ADR-0003 domain facts without messaging;
+- controlled P03 experiment;
+- P03 evidence ledger.
 
 ## Architectural interpretation
 
-This part creates **semantic responsibility**, not runtime decomposition.
+This part introduces semantic facts, not distributed messaging.
 
 It does not create:
+- Kafka;
+- event bus;
+- outbox/inbox;
+- event store;
+- CQRS;
+- Event Sourcing;
+- integration-event contracts;
+- service decomposition.
 
-- Customer Service;
-- Restaurant Service;
-- Payment Service;
-- authentication;
-- authorization infrastructure;
-- database-per-service;
-- Kafka or other remote communication.
+## Evidence status
 
-## Evidence-qualified guarantees
+Pending P03 CI execution.
 
-Within the tested application boundary:
+## Known non-guarantees intentionally preserved
 
-- modeled customer actor may place for the same customer identity;
-- restaurant operator actor is rejected from Place Order;
-- mismatched customer actor is rejected before persistence.
-
-Not guaranteed:
-
-- caller authentication;
-- general authorization policy;
-- durability;
-- concurrency correctness;
-- duplicate safety;
-- distributed consistency.
-
-## Fragilities intentionally preserved
-
-- transient in-memory state;
-- no durability guarantee;
-- no DB transaction/locking behavior;
-- no duplicate-command mechanism;
-- no concurrency protection;
-- no retries;
-- no distributed boundaries.
-
-## Deferred questions
-
-- command vs fact semantics → Part 1.1.3;
-- identity/authoritative-state depth → Part 1.1.4;
-- lifecycle/state transitions → later Chapter II parts;
-- service decomposition → Cluster 1.4.
+- process restart loses current state;
+- domain fact is not durably stored;
+- fact is not published to other participants;
+- duplicate commands are not handled;
+- concurrency is not controlled;
+- retry semantics are undefined;
+- future command legality is not yet defined.
 
 ## Next pressure
 
-Part 1.1.3 must answer when actor intent becomes a command, how a decision accepts/rejects it, and when an accepted result becomes a domain fact.
+Part 1.1.4 must deepen identity and authoritative-state reasoning: what entity is being referred to, which copy/state is authoritative, and what stale/transient representations mean.
+
+## Freeze gate
+
+1. mvn -B -ntp verify succeeds;
+2. inherited tests remain green;
+3. PlaceOrderSemanticFlowTest passes;
+4. accepted result/fact correspondence is observed;
+5. rejected command leaves repository unchanged;
+6. no messaging mechanism has been introduced without evidence.

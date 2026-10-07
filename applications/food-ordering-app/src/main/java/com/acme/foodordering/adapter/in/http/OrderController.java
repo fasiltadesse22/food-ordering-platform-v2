@@ -2,6 +2,7 @@ package com.acme.foodordering.adapter.in.http;
 
 import com.acme.foodordering.application.port.in.GetOrderUseCase;
 import com.acme.foodordering.application.port.in.PlaceOrderCommand;
+import com.acme.foodordering.application.port.in.PlaceOrderResult;
 import com.acme.foodordering.application.port.in.PlaceOrderUseCase;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,7 +27,7 @@ public class OrderController {
     }
 
     @PostMapping
-    public ResponseEntity<OrderResponse> place(@RequestBody PlaceOrderRequest request) {
+    public ResponseEntity<?> place(@RequestBody PlaceOrderRequest request) {
         var command = new PlaceOrderCommand(
                 request.customerId(),
                 request.restaurantId(),
@@ -40,11 +41,19 @@ public class OrderController {
                         .toList()
         );
 
-        var response = OrderResponse.from(placeOrderUseCase.place(command));
+        var result = placeOrderUseCase.place(command);
 
-        return ResponseEntity
-                .created(URI.create("/orders/" + response.id()))
-                .body(response);
+        return switch (result) {
+            case PlaceOrderResult.Accepted accepted -> {
+                var response = OrderResponse.from(accepted.order());
+                yield ResponseEntity
+                        .created(URI.create("/orders/" + response.id()))
+                        .body(response);
+            }
+            case PlaceOrderResult.Rejected rejected ->
+                    ResponseEntity.unprocessableEntity()
+                            .body(PlaceOrderRejectedResponse.from(rejected.rejection()));
+        };
     }
 
     @GetMapping("/{orderId}")

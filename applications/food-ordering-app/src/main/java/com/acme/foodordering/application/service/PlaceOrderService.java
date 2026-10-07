@@ -2,6 +2,8 @@ package com.acme.foodordering.application.service;
 
 import com.acme.foodordering.application.port.in.ActorType;
 import com.acme.foodordering.application.port.in.PlaceOrderCommand;
+import com.acme.foodordering.application.port.in.PlaceOrderRejection;
+import com.acme.foodordering.application.port.in.PlaceOrderResult;
 import com.acme.foodordering.application.port.in.PlaceOrderUseCase;
 import com.acme.foodordering.application.port.out.OrderRepository;
 import com.acme.foodordering.domain.order.CustomerId;
@@ -9,9 +11,11 @@ import com.acme.foodordering.domain.order.Order;
 import com.acme.foodordering.domain.order.OrderId;
 import com.acme.foodordering.domain.order.OrderLine;
 import com.acme.foodordering.domain.order.RestaurantId;
+import com.acme.foodordering.domain.order.fact.OrderPlaced;
 
 import java.time.Clock;
 import java.util.Objects;
+import java.util.Optional;
 
 public final class PlaceOrderService implements PlaceOrderUseCase {
 
@@ -24,10 +28,13 @@ public final class PlaceOrderService implements PlaceOrderUseCase {
     }
 
     @Override
-    public OrderSnapshot place(PlaceOrderCommand command) {
+    public PlaceOrderResult place(PlaceOrderCommand command) {
         Objects.requireNonNull(command, "command must not be null");
 
-        requireCustomerActorForRequestedCustomer(command);
+        var rejection = decideActorEligibility(command);
+        if (rejection.isPresent()) {
+            return new PlaceOrderResult.Rejected(rejection.get());
+        }
 
         var order = Order.place(
                 OrderId.random(),
@@ -45,20 +52,26 @@ public final class PlaceOrderService implements PlaceOrderUseCase {
         );
 
         repository.save(order);
-        return OrderSnapshot.from(order);
+
+        var fact = OrderPlaced.from(order);
+        return new PlaceOrderResult.Accepted(OrderSnapshot.from(order), fact);
     }
 
-    private static void requireCustomerActorForRequestedCustomer(PlaceOrderCommand command) {
+    private static Optional<PlaceOrderRejection> decideActorEligibility(PlaceOrderCommand command) {
         if (command.actor().actorType() != ActorType.CUSTOMER) {
-            throw new ActorNotAllowedException(
+            return Optional.of(new PlaceOrderRejection(
+                    PlaceOrderRejection.Code.ACTOR_TYPE_NOT_ALLOWED,
                     "actor type " + command.actor().actorType() + " cannot place a customer order"
-            );
+            ));
         }
 
         if (!command.actor().actorId().equals(command.customerId())) {
-            throw new ActorNotAllowedException(
+            return Optional.of(new PlaceOrderRejection(
+                    PlaceOrderRejection.Code.ACTOR_CUSTOMER_MISMATCH,
                     "customer actor must place an order for the same customer id"
-            );
+            ));
         }
+
+        return Optional.empty();
     }
 }

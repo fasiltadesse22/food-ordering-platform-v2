@@ -1,4 +1,4 @@
-package com.acme.foodordering.application.acceptance;
+package com.acme.foodordering.application.semantics;
 
 import com.acme.foodordering.adapter.out.inmemory.InMemoryOrderRepository;
 import com.acme.foodordering.application.port.in.ActorContext;
@@ -16,51 +16,53 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class PlaceOrderActorAcceptanceTest {
+class PlaceOrderSemanticFlowTest {
 
-    private final InMemoryOrderRepository repository = new InMemoryOrderRepository();
     private final Clock clock = Clock.fixed(Instant.parse("2026-10-07T10:00:00Z"), ZoneOffset.UTC);
-    private final PlaceOrderService service = new PlaceOrderService(repository, clock);
 
     @Test
-    void customerCanPlaceAnOrderForThemself() {
-        var result = service.place(command(
+    void acceptedCommandProducesARecordedOrderAndAnOrderPlacedFact() {
+        var repository = new InMemoryOrderRepository();
+        var service = new PlaceOrderService(repository, clock);
+
+        var command = command(
                 ActorContext.customer("customer-1"),
                 "customer-1"
-        ));
+        );
+
+        var result = service.place(command);
 
         assertThat(result).isInstanceOf(PlaceOrderResult.Accepted.class);
+        var accepted = (PlaceOrderResult.Accepted) result;
+
         assertThat(repository.size()).isEqualTo(1);
+        assertThat(accepted.fact().orderId().toString())
+                .isEqualTo(accepted.order().id());
+        assertThat(accepted.fact().occurredAt())
+                .isEqualTo(Instant.parse("2026-10-07T10:00:00Z"));
     }
 
     @Test
-    void restaurantOperatorCommandIsRejectedAndDoesNotBecomeAnOrderPlacedFact() {
-        var result = service.place(command(
+    void rejectedCommandProducesARejectionOutcomeWithoutOrderStateOrOrderPlacedFact() {
+        var repository = new InMemoryOrderRepository();
+        var service = new PlaceOrderService(repository, clock);
+
+        var command = command(
                 ActorContext.restaurantOperator("restaurant-operator-1"),
                 "customer-1"
-        ));
+        );
+
+        var result = service.place(command);
 
         assertThat(result).isInstanceOf(PlaceOrderResult.Rejected.class);
         var rejected = (PlaceOrderResult.Rejected) result;
+
         assertThat(rejected.rejection().code())
                 .isEqualTo(PlaceOrderRejection.Code.ACTOR_TYPE_NOT_ALLOWED);
-
         assertThat(repository.size()).isZero();
-    }
 
-    @Test
-    void mismatchedCustomerCommandIsRejectedAndDoesNotBecomeAnOrderPlacedFact() {
-        var result = service.place(command(
-                ActorContext.customer("customer-2"),
-                "customer-1"
-        ));
-
-        assertThat(result).isInstanceOf(PlaceOrderResult.Rejected.class);
-        var rejected = (PlaceOrderResult.Rejected) result;
-        assertThat(rejected.rejection().code())
-                .isEqualTo(PlaceOrderRejection.Code.ACTOR_CUSTOMER_MISMATCH);
-
-        assertThat(repository.size()).isZero();
+        // A Rejected result has no OrderPlaced fact by type design.
+        // This is intentional: requested intent did not become accepted business fact.
     }
 
     private static PlaceOrderCommand command(ActorContext actor, String customerId) {

@@ -1,5 +1,6 @@
 import com.acme.foodordering.adapter.out.inmemory.InMemoryOrderRepository;
 import com.acme.foodordering.application.port.in.PlaceOrderCommand;
+import com.acme.foodordering.application.port.in.PlaceOrderResult;
 import com.acme.foodordering.application.service.GetOrderService;
 import com.acme.foodordering.application.service.PlaceOrderService;
 
@@ -17,7 +18,7 @@ public final class CoreBaselineVerification {
         var placeOrder = new PlaceOrderService(repository, clock);
         var getOrder = new GetOrderService(repository);
 
-        var placed = placeOrder.place(new PlaceOrderCommand(
+        var result = placeOrder.place(new PlaceOrderCommand(
                 "customer-1",
                 "restaurant-1",
                 List.of(new PlaceOrderCommand.Line(
@@ -28,9 +29,14 @@ public final class CoreBaselineVerification {
                 ))
         ));
 
+        assert result instanceof PlaceOrderResult.Accepted : "expected accepted placement";
+        var accepted = (PlaceOrderResult.Accepted) result;
+        var placed = accepted.order();
+
         assert "PLACED".equals(placed.status()) : "expected PLACED";
         assert new BigDecimal("11.00").compareTo(placed.total()) == 0 : "unexpected total";
         assert repository.size() == 1 : "order was not persisted";
+        assert placed.id().equals(accepted.fact().orderId().toString()) : "fact/order mismatch";
 
         var loaded = getOrder.get(placed.id());
         assert placed.id().equals(loaded.id()) : "loaded order differs";
@@ -53,6 +59,7 @@ public final class CoreBaselineVerification {
         System.out.println("orders.persisted=" + repository.size());
         System.out.println("placed.status=" + placed.status());
         System.out.println("placed.total=" + placed.total());
+        System.out.println("domain.fact=" + accepted.fact().getClass().getSimpleName());
         System.out.println("durability.guaranteed=false");
         System.out.println("spring_http_path.verified=false");
     }
