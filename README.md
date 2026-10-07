@@ -1,46 +1,42 @@
-# Food Ordering Platform — V8.0 Fresh-Start Baseline
+# Food Ordering Platform — V8.0 Fresh-Start Evolution
 
 This repository is the evolving project for **Enterprise Distributed Systems Architecture & System Design — V8.0**.
 
-Current verified learning checkpoint:
+Inherited verified checkpoint:
 
 ```text
 C1.1-P01
+branch: checkpoints/C1.1-P01
 ```
 
-Part 1.1.1 intentionally established **one real Spring Boot deployable** without pre-creating microservices or future infrastructure.
+Current evolution:
 
-## Requirements
+```text
+C1.1-P02 candidate
+Actors, Goals, Responsibilities and Use Cases
+```
 
-- Java 21
-- Maven 3.9+
-- Spring Boot 4.1.1 (managed by the root POM)
-
-## Authoritative verification
+## Verification
 
 ```bash
 mvn -B -ntp verify
 ```
 
-P01 passed this gate in GitHub Actions after an evidence-driven repair to the Spring MVC test classpath.
+P02 is not frozen until its GitHub Actions verification completes successfully.
 
-## Framework-free verification
+## Current topology
 
-```bash
-./scripts/verify-core.sh
-```
+- one Java 21 / Spring Boot deployable;
+- framework-independent domain/application core;
+- in-memory persistence adapter;
+- minimal HTTP adapter;
+- explicit application-level business actor context for Place Order.
 
-This verifies the JDK-only core slice independently of Spring; it complements rather than replaces the Maven checkpoint gate.
+## Important actor-model boundary
 
-## Run
+`ActorContext` expresses **business use-case responsibility**. It is not authentication and does not prove the caller's real-world identity.
 
-```bash
-mvn -pl applications/food-ordering-app spring-boot:run
-```
-
-## Architectural guardrails
-
-Not present by design:
+## Deliberately absent
 
 - PostgreSQL
 - Kafka
@@ -55,4 +51,4 @@ Not present by design:
 - database-per-service
 - premature service decomposition
 
-See `checkpoint-manifest.md` and `architecture/evidence/C1.1-P01-evidence.md` for the exact evidence record.
+See `checkpoint-manifest.md` and `architecture/evidence/` for evidence-qualified claims.

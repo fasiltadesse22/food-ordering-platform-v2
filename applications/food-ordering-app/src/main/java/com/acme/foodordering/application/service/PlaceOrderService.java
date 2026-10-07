@@ -1,5 +1,6 @@
 package com.acme.foodordering.application.service;
 
+import com.acme.foodordering.application.port.in.ActorType;
 import com.acme.foodordering.application.port.in.PlaceOrderCommand;
 import com.acme.foodordering.application.port.in.PlaceOrderUseCase;
 import com.acme.foodordering.application.port.out.OrderRepository;
@@ -25,7 +26,8 @@ public final class PlaceOrderService implements PlaceOrderUseCase {
     @Override
     public OrderSnapshot place(PlaceOrderCommand command) {
         Objects.requireNonNull(command, "command must not be null");
-        Objects.requireNonNull(command.lines(), "lines must not be null");
+
+        requireCustomerActorForRequestedCustomer(command);
 
         var order = Order.place(
                 OrderId.random(),
@@ -44,5 +46,19 @@ public final class PlaceOrderService implements PlaceOrderUseCase {
 
         repository.save(order);
         return OrderSnapshot.from(order);
+    }
+
+    private static void requireCustomerActorForRequestedCustomer(PlaceOrderCommand command) {
+        if (command.actor().actorType() != ActorType.CUSTOMER) {
+            throw new ActorNotAllowedException(
+                    "actor type " + command.actor().actorType() + " cannot place a customer order"
+            );
+        }
+
+        if (!command.actor().actorId().equals(command.customerId())) {
+            throw new ActorNotAllowedException(
+                    "customer actor must place an order for the same customer id"
+            );
+        }
     }
 }
