@@ -38,18 +38,48 @@ No lifecycle command is being modeled by the quantity change. It is a synthetic 
 
 ## Execution
 
-Authoritative command:
+GitHub Actions run: 37639145313
+
+Command:
 
 mvn -B -ntp verify
 
 ## Observation
 
-Pending P04 CI.
+OrderIdentityAndAuthorityTest:
+- tests run: 4
+- failures: 0
+- errors: 0
+- skipped: 0
+
+Whole reactor:
+- tests run: 15
+- failures: 0
+- errors: 0
+- skipped: 0
+- BUILD SUCCESS
+
+Observed behavior matched the predictions.
+
+## Evidence
+
+- equal-valued OrderId objects were equal but not the same reference;
+- lookup with an independently created equal OrderId resolved the stored Order;
+- two different Order objects with equal OrderId values occupied one current repository identity slot;
+- the second saveCurrent became the repository current representation;
+- an earlier OrderSnapshot retained total 5.50 while repository current state for the same identity had total 11.00;
+- unknown OrderId lookup returned empty and GetOrderService reported not found.
+
+## Interpretation
+
+Business identity is carried by OrderId value semantics, not Java object reference.
+
+A detached snapshot is an observation. It can become stale while the current-state authority changes.
 
 ## Limitations
 
 The experiment does not establish:
-- legal order modification semantics;
+- legal order-modification semantics;
 - concurrency safety;
 - optimistic locking;
 - persistence durability;
@@ -58,4 +88,9 @@ The experiment does not establish:
 
 ## Conclusion
 
-Pending execution evidence.
+The controlled P04 execution supports the distinctions:
+
+identity != object reference
+snapshot != authority
+observation != ownership
+identifier != database primary key

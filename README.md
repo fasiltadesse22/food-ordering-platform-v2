@@ -1,13 +1,16 @@
 # Food Ordering Platform — V8.0 Fresh-Start Evolution
 
-Inherited verified checkpoint: C1.1-P03
-Current evolution: C1.1-P04 candidate — Identity and Authoritative State
+Current verified checkpoint: C1.1-P04 — Identity and Authoritative State
+Previous checkpoint: checkpoints/C1.1-P03
 
 ## Verification
 
 mvn -B -ntp verify
 
-P04 is not frozen until GitHub Actions verifies the exact candidate.
+P04 implementation verification:
+
+Tests run: 15, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
 
 ## Current identity/authority model
 
@@ -15,7 +18,7 @@ P04 is not frozen until GitHub Actions verifies the exact candidate.
 - Java object identity is not business identity.
 - application use cases operate on typed OrderId rather than transport strings;
 - OrderRepository is current in-process Order-state authority;
-- OrderSnapshot is a detached observation and may become stale;
+- OrderSnapshot is a detached observation and can become stale;
 - OrderResponse is transport representation, not authority;
 - OrderPlaced is a business fact, not current-state storage.
 

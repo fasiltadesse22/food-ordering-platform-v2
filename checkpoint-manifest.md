@@ -1,12 +1,14 @@
-# Checkpoint Manifest — C1.1-P04 Candidate
+# Checkpoint Manifest — C1.1-P04
 
 ## Identity
 
-- Target checkpoint: C1.1-P04
-- Current status: CANDIDATE — NOT FROZEN
+- Checkpoint: C1.1-P04
+- Current status: VERIFIED AND FROZEN
 - Inherited checkpoint: C1.1-P03
 - Inherited branch: checkpoints/C1.1-P03
 - Inherited commit: 5806426484a646a27df26955d56021e29a1a9f14
+- P04 implementation commit: d6d6d31b74e3fed7a3620983cef14d1650e339e7
+- P04 verification run: 37639145313
 
 ## Engineering question
 
@@ -27,12 +29,25 @@ Typed business identifiers plus an explicit current-state repository contract ca
 
 ## Experiment evolution
 
-OrderIdentityAndAuthorityTest covers:
+OrderIdentityAndAuthorityTest verifies:
 - equal identifier values across different OrderId objects;
 - same business identity across different Order Java instances;
 - repository selection of current same-identity representation;
 - detached snapshot becoming stale;
 - unknown identity lookup.
+
+## Verification
+
+GitHub Actions executed:
+
+mvn -B -ntp verify
+
+Observed:
+
+Tests run: 15, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+
+All inherited P01-P03 tests remained green.
 
 ## Architectural interpretation
 
@@ -48,26 +63,29 @@ It introduces no:
 - replica;
 - service split.
 
-## Evidence status
+## Evidence-qualified guarantees
 
-Pending P04 CI.
+Within the tested one-process model:
+- equal OrderId values address the same repository identity;
+- different Java objects can represent the same Order identity;
+- repository mapping determines current in-process Order state;
+- detached snapshots do not automatically track later current state;
+- unknown OrderId has no current Order.
+
+Not guaranteed:
+- durability;
+- stale-write rejection;
+- concurrent update correctness;
+- database uniqueness;
+- distributed source-of-truth coordination.
 
 ## Non-guarantees deliberately preserved
 
 - process restart loses authority state;
 - repository overwrite is concurrency-naive;
-- stale writes are not detected;
 - lifecycle-valid update rules are not defined;
-- business identity is not yet backed by a database uniqueness constraint.
+- no version field exists.
 
 ## Next pressure
 
-Part 1.1.5 will move from isolated concepts into end-to-end workflow discovery: placement, payment, restaurant decision, cancellation, refund, preparation and completion, while still avoiding premature distribution.
-
-## Freeze gate
-
-1. root mvn -B -ntp verify succeeds;
-2. inherited P01-P03 tests remain green;
-3. OrderIdentityAndAuthorityTest passes;
-4. stale-snapshot behavior is observed rather than merely asserted in prose;
-5. no concurrency or database mechanism is introduced prematurely.
+Part 1.1.5 moves into end-to-end workflow discovery: ordering, payment, restaurant decision, cancellation, refund, preparation and completion, including alternative paths and handoffs.
