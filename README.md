@@ -2,13 +2,13 @@
 
 This repository is the evolving project for **Enterprise Distributed Systems Architecture & System Design — V8.0**.
 
-Current learning checkpoint:
+Current verified learning checkpoint:
 
 ```text
-C1.1-P01 candidate
+C1.1-P01
 ```
 
-It intentionally starts with **one real Spring Boot deployable** and does not pre-create microservices or future infrastructure.
+Part 1.1.1 intentionally established **one real Spring Boot deployable** without pre-creating microservices or future infrastructure.
 
 ## Requirements
 
@@ -16,46 +16,26 @@ It intentionally starts with **one real Spring Boot deployable** and does not pr
 - Maven 3.9+
 - Spring Boot 4.1.1 (managed by the root POM)
 
-## Full verification gate
+## Authoritative verification
 
 ```bash
 mvn -B -ntp verify
 ```
 
-## Framework-free fallback verification
+P01 passed this gate in GitHub Actions after an evidence-driven repair to the Spring MVC test classpath.
+
+## Framework-free verification
 
 ```bash
 ./scripts/verify-core.sh
 ```
 
-The fallback verifies only the JDK-only core slice and does **not** replace the V8 Maven checkpoint gate.
+This verifies the JDK-only core slice independently of Spring; it complements rather than replaces the Maven checkpoint gate.
 
 ## Run
 
-After Maven dependencies are available:
-
 ```bash
 mvn -pl applications/food-ordering-app spring-boot:run
-```
-
-## Example
-
-```bash
-curl -i \
-  -H 'Content-Type: application/json' \
-  -d '{
-        "customerId":"customer-1",
-        "restaurantId":"restaurant-1",
-        "lines":[
-          {
-            "menuItemId":"burger-1",
-            "name":"Classic Burger",
-            "quantity":2,
-            "unitPrice":5.50
-          }
-        ]
-      }' \
-  http://localhost:8080/orders
 ```
 
 ## Architectural guardrails
@@ -75,4 +55,4 @@ Not present by design:
 - database-per-service
 - premature service decomposition
 
-See `checkpoint-manifest.md` and `architecture/evidence/C1.1-P01-evidence.md` for exact verification status.
+See `checkpoint-manifest.md` and `architecture/evidence/C1.1-P01-evidence.md` for the exact evidence record.

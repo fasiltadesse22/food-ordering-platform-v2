@@ -1,12 +1,13 @@
-# Checkpoint Manifest — C1.1-P01 Candidate
+# Checkpoint Manifest — C1.1-P01
 
 ## Identity
 
-- Target checkpoint: `C1.1-P01`
-- Current status: **CANDIDATE — NOT FROZEN**
+- Checkpoint: `C1.1-P01`
+- Current status: **VERIFIED AND FROZEN**
 - Inherited checkpoint: none
 - Baseline: fresh V8.0 repository
-- Candidate Git tag: `C1.1-P01-candidate`
+- Verified code/config commit: `b91edcd9d3e14b7dbd7ba7cac54cd187a1182625`
+- Verification workflow run: `37628171669`
 
 ## Engineering question
 
@@ -17,8 +18,6 @@ What must remain correct before we make any architectural decision?
 A minimal real Food Ordering vertical slice can be implemented as one Spring Boot deployable with a framework-independent domain/application core and an in-memory output adapter, while deliberately avoiding premature distributed-system mechanisms.
 
 ## Source/config changes
-
-See repository tree.
 
 Key elements:
 
@@ -34,30 +33,48 @@ Key elements:
 - CI workflow
 - architecture scenarios/ADRs/evidence
 
-## Verification commands
+A verification defect discovered by CI was repaired by adding the focused Spring Boot MVC test starter required by Spring Boot 4.1.1.
 
-Executed in the authoring environment:
+## Verification
+
+Authoring-environment evidence:
 
 ```bash
 java -version
 ./scripts/verify-core.sh
 ```
 
-Required but **not executed successfully in the authoring environment**:
+Authoritative reproducible verification:
 
 ```bash
 mvn -B -ntp verify
 ```
 
+GitHub Actions run `37628171669` executed the root Maven reactor on Java 21 and completed successfully.
+
+Observed test result:
+
+```text
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+```
+
+The successful run includes:
+
+- Spring Boot context load;
+- domain tests;
+- application-service test;
+- MockMvc HTTP integration tests.
+
 ## Evidence status
 
-- Java 21: observed
-- framework-free core compile: executed and verified
-- framework-free place/get behavior: executed and verified
-- Maven reactor: not yet verified
-- Spring context: not yet verified
-- HTTP integration: not yet verified
-- CI run: not yet verified
+- Java 21: **executed and verified in CI**
+- framework-free core compile: **executed and verified**
+- framework-free place/get behavior: **executed and verified**
+- root Maven reactor: **executed and verified**
+- Spring context: **executed and verified**
+- HTTP integration: **executed and verified**
+- CI: **executed and verified**
 
 ## Known fragilities intentionally preserved
 
@@ -85,12 +102,3 @@ mvn -B -ntp verify
 ## Next pressure
 
 Part 1.1.2 must derive actors, goals, responsibilities and use cases from business reality without turning actors into services.
-
-## Freeze gate
-
-Do not relabel this candidate as `C1.1-P01` until:
-
-1. `mvn -B -ntp verify` actually succeeds;
-2. Spring context test executes;
-3. HTTP integration tests execute;
-4. the resulting output is recorded in the evidence ledger.
