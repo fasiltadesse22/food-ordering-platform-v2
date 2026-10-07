@@ -1,66 +1,31 @@
 # Food Ordering Platform — V8.0 Fresh-Start Evolution
 
-This repository is the evolving project for Enterprise Distributed Systems Architecture & System Design — V8.0.
-
-Current verified learning checkpoint:
-
-C1.1-P03
-Intent, Commands, Decisions, Facts and Events
-
-Previous preserved checkpoint:
-
-checkpoints/C1.1-P02
+Inherited verified checkpoint: C1.1-P03
+Current evolution: C1.1-P04 candidate — Identity and Authoritative State
 
 ## Verification
 
 mvn -B -ntp verify
 
-P03 implementation verification:
+P04 is not frozen until GitHub Actions verifies the exact candidate.
 
-Tests run: 11, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
+## Current identity/authority model
 
-## Current semantic flow
-
-Customer intent
-→ PlaceOrderRequest
-→ PlaceOrderCommand
-→ application decision
-→ Accepted or Rejected result
-→ OrderPlaced local domain fact only on accepted path
-
-## Important event/fact boundary
-
-OrderPlaced is a local semantic domain fact.
-
-It is not:
-- a Kafka record;
-- an integration event contract;
-- an outbox row;
-- an event-store record;
-- proof of event-driven architecture.
+- OrderId is business identity for Order.
+- Java object identity is not business identity.
+- application use cases operate on typed OrderId rather than transport strings;
+- OrderRepository is current in-process Order-state authority;
+- OrderSnapshot is a detached observation and may become stale;
+- OrderResponse is transport representation, not authority;
+- OrderPlaced is a business fact, not current-state storage.
 
 ## Current topology
 
 - one Java 21 / Spring Boot deployable;
-- framework-independent domain/application core;
-- in-memory persistence adapter;
-- minimal HTTP adapter;
-- no distributed communication after the HTTP boundary.
+- in-memory current-state repository;
+- no database;
+- no optimistic locking;
+- no messaging;
+- no service decomposition.
 
-## Deliberately absent
-
-- PostgreSQL
-- Kafka
-- Redis
-- Saga
-- Outbox
-- CQRS
-- Event Sourcing
-- distributed locks
-- service mesh
-- Kubernetes
-- database-per-service
-- premature service decomposition
-
-See checkpoint-manifest.md, architecture/scenarios, architecture/adr and architecture/evidence for the evidence-qualified model.
+See checkpoint-manifest.md, architecture/adr, architecture/scenarios and architecture/evidence for the evidence-qualified model.

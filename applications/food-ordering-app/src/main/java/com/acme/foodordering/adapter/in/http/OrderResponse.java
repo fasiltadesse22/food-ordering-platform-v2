@@ -25,9 +25,9 @@ public record OrderResponse(
 
     public static OrderResponse from(OrderSnapshot snapshot) {
         return new OrderResponse(
-                snapshot.id(),
-                snapshot.customerId(),
-                snapshot.restaurantId(),
+                snapshot.id().toString(),
+                snapshot.customerId().value(),
+                snapshot.restaurantId().value(),
                 snapshot.status(),
                 snapshot.placedAt(),
                 snapshot.total(),

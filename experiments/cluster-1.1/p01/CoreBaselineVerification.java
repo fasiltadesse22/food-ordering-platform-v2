@@ -36,7 +36,7 @@ public final class CoreBaselineVerification {
         assert "PLACED".equals(placed.status()) : "expected PLACED";
         assert new BigDecimal("11.00").compareTo(placed.total()) == 0 : "unexpected total";
         assert repository.size() == 1 : "order was not persisted";
-        assert placed.id().equals(accepted.fact().orderId().toString()) : "fact/order mismatch";
+        assert placed.id().equals(accepted.fact().orderId()) : "fact/order mismatch";
 
         var loaded = getOrder.get(placed.id());
         assert placed.id().equals(loaded.id()) : "loaded order differs";
@@ -60,6 +60,7 @@ public final class CoreBaselineVerification {
         System.out.println("placed.status=" + placed.status());
         System.out.println("placed.total=" + placed.total());
         System.out.println("domain.fact=" + accepted.fact().getClass().getSimpleName());
+        System.out.println("identity.type=" + placed.id().getClass().getSimpleName());
         System.out.println("durability.guaranteed=false");
         System.out.println("spring_http_path.verified=false");
     }

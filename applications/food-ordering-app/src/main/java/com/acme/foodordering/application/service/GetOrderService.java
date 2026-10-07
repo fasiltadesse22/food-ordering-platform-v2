@@ -15,9 +15,11 @@ public final class GetOrderService implements GetOrderUseCase {
     }
 
     @Override
-    public OrderSnapshot get(String orderId) {
-        return repository.findById(OrderId.from(orderId))
+    public OrderSnapshot get(OrderId orderId) {
+        Objects.requireNonNull(orderId, "orderId must not be null");
+
+        return repository.findCurrentById(orderId)
                 .map(OrderSnapshot::from)
-                .orElseThrow(() -> new OrderNotFoundException(orderId));
+                .orElseThrow(() -> new OrderNotFoundException(orderId.toString()));
     }
 }

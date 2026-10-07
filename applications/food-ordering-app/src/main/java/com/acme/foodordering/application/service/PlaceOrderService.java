@@ -51,7 +51,7 @@ public final class PlaceOrderService implements PlaceOrderUseCase {
                 clock.instant()
         );
 
-        repository.save(order);
+        repository.saveCurrent(order);
 
         var fact = OrderPlaced.from(order);
         return new PlaceOrderResult.Accepted(OrderSnapshot.from(order), fact);

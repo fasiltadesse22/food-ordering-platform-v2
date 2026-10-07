@@ -4,6 +4,7 @@ import com.acme.foodordering.application.port.in.GetOrderUseCase;
 import com.acme.foodordering.application.port.in.PlaceOrderCommand;
 import com.acme.foodordering.application.port.in.PlaceOrderResult;
 import com.acme.foodordering.application.port.in.PlaceOrderUseCase;
+import com.acme.foodordering.domain.order.OrderId;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -58,6 +59,6 @@ public class OrderController {
 
     @GetMapping("/{orderId}")
     public OrderResponse get(@PathVariable String orderId) {
-        return OrderResponse.from(getOrderUseCase.get(orderId));
+        return OrderResponse.from(getOrderUseCase.get(OrderId.from(orderId)));
     }
 }

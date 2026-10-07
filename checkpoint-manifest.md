@@ -1,97 +1,73 @@
-# Checkpoint Manifest — C1.1-P03
+# Checkpoint Manifest — C1.1-P04 Candidate
 
 ## Identity
 
-- Checkpoint: C1.1-P03
-- Current status: VERIFIED AND FROZEN
-- Inherited checkpoint: C1.1-P02
-- Inherited checkpoint branch: checkpoints/C1.1-P02
-- Inherited commit: 8ceb6046b44e5fa94574972496910cef95a8b02b
-- P03 implementation commit: 3c1e6dcc4121b06552a7bc6778251d7dea664175
-- P03 verification run: 37632251569
+- Target checkpoint: C1.1-P04
+- Current status: CANDIDATE — NOT FROZEN
+- Inherited checkpoint: C1.1-P03
+- Inherited branch: checkpoints/C1.1-P03
+- Inherited commit: 5806426484a646a27df26955d56021e29a1a9f14
 
 ## Engineering question
 
-When does requested intent become an accepted business fact?
+How do we know which business thing we are talking about, and which representation of its state should be trusted?
 
 ## Prediction
 
-An explicit command decision/result model can demonstrate that a requested PlaceOrder command may be accepted or rejected, and that OrderPlaced exists only on the accepted path, without introducing Kafka, an event bus, an outbox, event sourcing, or other messaging infrastructure.
+Typed business identifiers plus an explicit current-state repository contract can distinguish identity from object reference and snapshots from authority while preserving the single-process in-memory architecture.
 
 ## Source evolution
 
-- added PlaceOrderResult Accepted/Rejected variants;
-- added PlaceOrderRejection;
-- added OrderPlaced local domain fact;
-- evolved PlaceOrderUseCase return type;
-- evolved PlaceOrderService decision path;
-- evolved controller response mapping;
-- removed obsolete ActorNotAllowedException;
-- updated framework-free verification harness for result semantics.
+- OrderRepository exposes saveCurrent/findCurrentById;
+- GetOrderUseCase accepts OrderId rather than transport String;
+- GetOrderService queries current state by typed identity;
+- OrderSnapshot preserves typed identities;
+- OrderController parses HTTP path String into OrderId;
+- OrderResponse converts application/domain identity values to transport strings.
 
-## Test evolution
+## Experiment evolution
 
-- inherited actor tests assert accepted/rejected results;
-- service test asserts accepted result plus matching OrderPlaced fact;
-- PlaceOrderSemanticFlowTest proves accepted vs rejected command behavior;
-- inherited HTTP/domain/context tests remain green.
-
-## Verification
-
-GitHub Actions executed:
-
-mvn -B -ntp verify
-
-Observed:
-
-Tests run: 11, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
-
-The new semantic-flow tests passed and all inherited P01/P02 tests remained green.
+OrderIdentityAndAuthorityTest covers:
+- equal identifier values across different OrderId objects;
+- same business identity across different Order Java instances;
+- repository selection of current same-identity representation;
+- detached snapshot becoming stale;
+- unknown identity lookup.
 
 ## Architectural interpretation
 
-This part introduces semantic domain facts, not distributed messaging.
+P04 defines current authority, not database architecture.
 
-It does not create:
-- Kafka;
-- event bus;
-- outbox/inbox;
-- event store;
-- CQRS;
-- Event Sourcing;
-- integration-event contracts;
-- service decomposition.
+It introduces no:
+- PostgreSQL;
+- JPA/Hibernate;
+- database primary-key decision;
+- optimistic lock/version field;
+- distributed lock;
+- cache;
+- replica;
+- service split.
 
-## Evidence-qualified guarantees
+## Evidence status
 
-Within the tested application boundary:
-- a valid PlaceOrder command can be accepted;
-- accepted PlaceOrder updates current repository state;
-- accepted PlaceOrder returns a corresponding OrderPlaced local fact;
-- invalid actor PlaceOrder can be rejected;
-- rejected actor command leaves current repository state unchanged;
-- rejected result does not carry OrderPlaced.
+Pending P04 CI.
 
-Not guaranteed:
-- caller authentication;
-- durable fact history;
-- fact publication;
-- cross-process delivery;
-- retry/duplicate safety;
-- concurrency correctness;
-- distributed consistency.
+## Non-guarantees deliberately preserved
 
-## Known non-guarantees intentionally preserved
-
-- process restart loses current state;
-- domain fact is not durably stored;
-- fact is not published to other participants;
-- duplicate commands are not handled;
-- concurrency is not controlled;
-- retry semantics are undefined;
-- future command legality is not yet defined.
+- process restart loses authority state;
+- repository overwrite is concurrency-naive;
+- stale writes are not detected;
+- lifecycle-valid update rules are not defined;
+- business identity is not yet backed by a database uniqueness constraint.
 
 ## Next pressure
 
-Part 1.1.4 must deepen identity and authoritative-state reasoning: what entity is being referred to, which copy/state is authoritative, and what stale/transient representations mean.
+Part 1.1.5 will move from isolated concepts into end-to-end workflow discovery: placement, payment, restaurant decision, cancellation, refund, preparation and completion, while still avoiding premature distribution.
+
+## Freeze gate
+
+1. root mvn -B -ntp verify succeeds;
+2. inherited P01-P03 tests remain green;
+3. OrderIdentityAndAuthorityTest passes;
+4. stale-snapshot behavior is observed rather than merely asserted in prose;
+5. no concurrency or database mechanism is introduced prematurely.

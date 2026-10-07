@@ -36,7 +36,7 @@ class PlaceOrderSemanticFlowTest {
         var accepted = (PlaceOrderResult.Accepted) result;
 
         assertThat(repository.size()).isEqualTo(1);
-        assertThat(accepted.fact().orderId().toString())
+        assertThat(accepted.fact().orderId())
                 .isEqualTo(accepted.order().id());
         assertThat(accepted.fact().occurredAt())
                 .isEqualTo(Instant.parse("2026-10-07T10:00:00Z"));
@@ -60,9 +60,6 @@ class PlaceOrderSemanticFlowTest {
         assertThat(rejected.rejection().code())
                 .isEqualTo(PlaceOrderRejection.Code.ACTOR_TYPE_NOT_ALLOWED);
         assertThat(repository.size()).isZero();
-
-        // A Rejected result has no OrderPlaced fact by type design.
-        // This is intentional: requested intent did not become accepted business fact.
     }
 
     private static PlaceOrderCommand command(ActorContext actor, String customerId) {

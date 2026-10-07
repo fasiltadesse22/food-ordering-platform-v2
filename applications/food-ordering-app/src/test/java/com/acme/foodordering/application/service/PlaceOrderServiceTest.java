@@ -42,12 +42,11 @@ class PlaceOrderServiceTest {
         assertThat(order.placedAt()).isEqualTo(Instant.parse("2026-10-07T10:00:00Z"));
         assertThat(order.total()).isEqualByComparingTo("11.00");
         assertThat(repository.size()).isEqualTo(1);
-        assertThat(repository.findById(com.acme.foodordering.domain.order.OrderId.from(order.id())))
-                .isPresent();
+        assertThat(repository.findCurrentById(order.id())).isPresent();
 
-        assertThat(fact.orderId().toString()).isEqualTo(order.id());
-        assertThat(fact.customerId().value()).isEqualTo(order.customerId());
-        assertThat(fact.restaurantId().value()).isEqualTo(order.restaurantId());
+        assertThat(fact.orderId()).isEqualTo(order.id());
+        assertThat(fact.customerId()).isEqualTo(order.customerId());
+        assertThat(fact.restaurantId()).isEqualTo(order.restaurantId());
         assertThat(fact.occurredAt()).isEqualTo(order.placedAt());
         assertThat(fact.total()).isEqualByComparingTo(order.total());
     }
