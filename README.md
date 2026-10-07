@@ -2,18 +2,17 @@
 
 This repository is the evolving project for **Enterprise Distributed Systems Architecture & System Design — V8.0**.
 
-Inherited verified checkpoint:
+Current verified learning checkpoint:
 
 ```text
-C1.1-P01
-branch: checkpoints/C1.1-P01
+C1.1-P02
+Actors, Goals, Responsibilities and Use Cases
 ```
 
-Current evolution:
+Previous preserved checkpoint:
 
 ```text
-C1.1-P02 candidate
-Actors, Goals, Responsibilities and Use Cases
+checkpoints/C1.1-P01
 ```
 
 ## Verification
@@ -22,7 +21,12 @@ Actors, Goals, Responsibilities and Use Cases
 mvn -B -ntp verify
 ```
 
-P02 is not frozen until its GitHub Actions verification completes successfully.
+P02 verification executed in GitHub Actions:
+
+```text
+Tests run: 9, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+```
 
 ## Current topology
 
@@ -51,4 +55,4 @@ P02 is not frozen until its GitHub Actions verification completes successfully.
 - database-per-service
 - premature service decomposition
 
-See `checkpoint-manifest.md` and `architecture/evidence/` for evidence-qualified claims.
+See `checkpoint-manifest.md`, `architecture/scenarios/`, and `architecture/evidence/` for the scope and evidence record.

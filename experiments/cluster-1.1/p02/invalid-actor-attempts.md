@@ -37,31 +37,52 @@ Actor context is changed while the order payload, restaurant and order line rema
 
 ## Execution
 
-Authoritative execution command:
+Authoritative command executed by GitHub Actions:
 
 ```bash
 mvn -B -ntp verify
 ```
 
+Workflow run:
+
+```text
+37629067834
+```
+
 ## Observation
 
-**Pending until the P02 GitHub Actions run completes.**
+```text
+PlaceOrderActorAcceptanceTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0
+```
 
-Do not replace this line with PASS based on source inspection.
+Overall reactor:
+
+```text
+Tests run: 9, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+```
+
+Observed behavior matched all three predictions.
 
 ## Evidence
 
-Pending CI run identifier and test output.
+- valid customer actor test: passed;
+- restaurant-operator invalid attempt: rejected and repository remained empty;
+- mismatched-customer invalid attempt: rejected and repository remained empty;
+- inherited P01 tests remained green.
 
 ## Interpretation
 
-If the prediction is observed, the application boundary structurally represents actor/use-case responsibility rather than leaving it only in documentation or HTTP routing.
+The Place Order application boundary now represents business actor/use-case responsibility explicitly rather than relying only on HTTP routing or documentation.
+
+The result demonstrates **use-case eligibility under the modeled ActorContext**, not real-world identity proof.
 
 ## Limitations
 
-Even a passing test does not prove:
+The passing experiment does not establish:
 
-- real caller authentication;
+- authentication;
 - a complete authorization model;
 - restaurant staff identity semantics;
 - payment authority;
@@ -70,4 +91,4 @@ Even a passing test does not prove:
 
 ## Conclusion
 
-Pending execution evidence.
+The prediction was supported in the controlled P02 test environment. Actor/use-case responsibility is now executable evidence in the project while security infrastructure and service decomposition remain intentionally absent.

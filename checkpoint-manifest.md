@@ -1,12 +1,14 @@
-# Checkpoint Manifest — C1.1-P02 Candidate
+# Checkpoint Manifest — C1.1-P02
 
 ## Identity
 
-- Target checkpoint: `C1.1-P02`
-- Current status: **CANDIDATE — NOT FROZEN**
+- Checkpoint: `C1.1-P02`
+- Current status: **VERIFIED AND FROZEN**
 - Inherited checkpoint: `C1.1-P01`
 - Inherited checkpoint branch: `checkpoints/C1.1-P01`
 - Inherited commit: `d6dbc93e06955e5e7d288ac6a61093e16ce09d71`
+- P02 implementation commit: `a8fbe96e179cc3ff5aadb07d483c6130e4e42de3`
+- P02 verification run: `37629067834`
 
 ## Engineering question
 
@@ -41,6 +43,23 @@ Explicitly representing the caller's business actor at the Place Order applicati
 - invalid-actor controlled experiment;
 - P02 evidence ledger.
 
+## Verification
+
+GitHub Actions executed:
+
+```bash
+mvn -B -ntp verify
+```
+
+Observed:
+
+```text
+Tests run: 9, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+```
+
+The three P02 actor acceptance tests passed, and all inherited P01 tests remained green.
+
 ## Architectural interpretation
 
 This part creates **semantic responsibility**, not runtime decomposition.
@@ -55,9 +74,22 @@ It does not create:
 - database-per-service;
 - Kafka or other remote communication.
 
-## Evidence status
+## Evidence-qualified guarantees
 
-Pending P02 CI execution.
+Within the tested application boundary:
+
+- modeled customer actor may place for the same customer identity;
+- restaurant operator actor is rejected from Place Order;
+- mismatched customer actor is rejected before persistence.
+
+Not guaranteed:
+
+- caller authentication;
+- general authorization policy;
+- durability;
+- concurrency correctness;
+- duplicate safety;
+- distributed consistency.
 
 ## Fragilities intentionally preserved
 
@@ -76,10 +108,6 @@ Pending P02 CI execution.
 - lifecycle/state transitions → later Chapter II parts;
 - service decomposition → Cluster 1.4.
 
-## Freeze gate
+## Next pressure
 
-1. root `mvn -B -ntp verify` succeeds;
-2. existing P01 tests remain green;
-3. new actor acceptance tests execute and pass;
-4. CI evidence is recorded;
-5. no future mechanism has been introduced without authorization.
+Part 1.1.3 must answer when actor intent becomes a command, how a decision accepts/rejects it, and when an accepted result becomes a domain fact.
