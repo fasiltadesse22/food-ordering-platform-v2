@@ -1,91 +1,78 @@
-# Checkpoint Manifest — C1.1-P04
+# Checkpoint Manifest — C1.1-P05 Candidate
 
 ## Identity
 
-- Checkpoint: C1.1-P04
-- Current status: VERIFIED AND FROZEN
-- Inherited checkpoint: C1.1-P03
-- Inherited branch: checkpoints/C1.1-P03
-- Inherited commit: 5806426484a646a27df26955d56021e29a1a9f14
-- P04 implementation commit: d6d6d31b74e3fed7a3620983cef14d1650e339e7
-- P04 verification run: 37639145313
+- Target checkpoint: C1.1-P05
+- Current status: CANDIDATE — NOT FROZEN
+- Inherited checkpoint: C1.1-P04
+- Inherited branch: checkpoints/C1.1-P04
+- Inherited commit: dfcea735542790ea4b424abdc6ae2f2dcde4a796
 
 ## Engineering question
 
-How do we know which business thing we are talking about, and which representation of its state should be trusted?
+What actually happens from placement to a business outcome, including alternative paths, handoffs, cancellation, refund, preparation and completion?
 
 ## Prediction
 
-Typed business identifiers plus an explicit current-state repository contract can distinguish identity from object reference and snapshots from authority while preserving the single-process in-memory architecture.
+A permissive workflow recorder can make end-to-end paths executable while preserving the distinction workflow != state machine and creating evidence for P06 transition legality.
 
 ## Source evolution
 
-- OrderRepository exposes saveCurrent/findCurrentById;
-- GetOrderUseCase accepts OrderId rather than transport String;
-- GetOrderService queries current state by typed identity;
-- OrderSnapshot preserves typed identities;
-- OrderController parses HTTP path String into OrderId;
-- OrderResponse converts application/domain identity values to transport strings.
+- added workflow participant/action/occurrence model;
+- evolved Order to record post-placement workflow occurrences;
+- added OrderWorkflowUseCase;
+- added OrderWorkflowService;
+- evolved OrderSnapshot to expose workflow trace;
+- wired workflow service into the Spring application.
 
-## Experiment evolution
+## Executable scenarios
 
-OrderIdentityAndAuthorityTest verifies:
-- equal identifier values across different OrderId objects;
-- same business identity across different Order Java instances;
-- repository selection of current same-identity representation;
-- detached snapshot becoming stale;
-- unknown identity lookup.
-
-## Verification
-
-GitHub Actions executed:
-
-mvn -B -ntp verify
-
-Observed:
-
-Tests run: 15, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
-
-All inherited P01-P03 tests remained green.
+- happy path;
+- restaurant rejection after recorded payment with refund-request handoff;
+- cancellation before payment;
+- cancellation after payment with refund-request handoff;
+- contradictory/out-of-order sequence demonstrating missing transition guards;
+- Spring integration proving workflow updates the same current Order.
 
 ## Architectural interpretation
 
-P04 defines current authority, not database architecture.
+This part records workflow milestones, not final lifecycle state.
 
-It introduces no:
+Order.status intentionally remains PLACED.
+
+The project still contains no:
 - PostgreSQL;
-- JPA/Hibernate;
-- database primary-key decision;
-- optimistic lock/version field;
-- distributed lock;
-- cache;
-- replica;
-- service split.
+- Kafka;
+- Redis;
+- Saga;
+- Outbox;
+- CQRS;
+- Event Sourcing;
+- state-machine library;
+- optimistic locking;
+- service decomposition.
 
-## Evidence-qualified guarantees
+## Evidence status
 
-Within the tested one-process model:
-- equal OrderId values address the same repository identity;
-- different Java objects can represent the same Order identity;
-- repository mapping determines current in-process Order state;
-- detached snapshots do not automatically track later current state;
-- unknown OrderId has no current Order.
+Pending P05 CI.
 
-Not guaranteed:
-- durability;
-- stale-write rejection;
-- concurrent update correctness;
-- database uniqueness;
-- distributed source-of-truth coordination.
+## Fragilities intentionally preserved
 
-## Non-guarantees deliberately preserved
-
-- process restart loses authority state;
-- repository overwrite is concurrency-naive;
-- lifecycle-valid update rules are not defined;
-- no version field exists.
+- any milestone ordering can currently be recorded;
+- restaurant acceptance and rejection can both appear;
+- preparation can be recorded before acceptance;
+- completion has no formal prerequisites;
+- payment/refund are local workflow representations only;
+- current state remains transient.
 
 ## Next pressure
 
-Part 1.1.5 moves into end-to-end workflow discovery: ordering, payment, restaurant decision, cancellation, refund, preparation and completion, including alternative paths and handoffs.
+Part 1.1.6 must derive explicit lifecycle states and legal/illegal transitions from the P05 workflow evidence rather than inventing them independently.
+
+## Freeze gate
+
+1. root mvn -B -ntp verify succeeds;
+2. inherited P01-P04 tests remain green;
+3. new workflow path tests pass;
+4. contradictory/out-of-order path is reproduced as evidence of missing state-machine guards;
+5. evidence is recorded without calling that fragility a valid business path.

@@ -1,34 +1,42 @@
 # Food Ordering Platform — V8.0 Fresh-Start Evolution
 
-Current verified checkpoint: C1.1-P04 — Identity and Authoritative State
-Previous checkpoint: checkpoints/C1.1-P03
+Inherited verified checkpoint: C1.1-P04
+Current evolution: C1.1-P05 candidate — End-to-End Workflow Discovery
 
 ## Verification
 
 mvn -B -ntp verify
 
-P04 implementation verification:
+P05 is not frozen until GitHub Actions verifies the exact candidate.
 
-Tests run: 15, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
+## Current workflow model
 
-## Current identity/authority model
+The project can record selected in-process workflow milestones for:
+- payment;
+- restaurant acceptance/rejection;
+- cancellation;
+- refund request;
+- preparation;
+- completion.
 
-- OrderId is business identity for Order.
-- Java object identity is not business identity.
-- application use cases operate on typed OrderId rather than transport strings;
-- OrderRepository is current in-process Order-state authority;
-- OrderSnapshot is a detached observation and can become stale;
-- OrderResponse is transport representation, not authority;
-- OrderPlaced is a business fact, not current-state storage.
+The recorder is intentionally permissive.
+
+Order.status remains PLACED because P05 is workflow discovery, not the lifecycle state machine.
+
+## Important boundaries
+
+- PAYMENT_RECORDED is a local learning-stage milestone, not a real external charge.
+- REFUND_REQUESTED is not REFUND_COMPLETED.
+- workflow occurrence list is not Event Sourcing.
+- participant handoffs do not imply service/network boundaries.
 
 ## Current topology
 
 - one Java 21 / Spring Boot deployable;
 - in-memory current-state repository;
 - no database;
-- no optimistic locking;
 - no messaging;
+- no Saga;
 - no service decomposition.
 
-See checkpoint-manifest.md, architecture/adr, architecture/scenarios and architecture/evidence for the evidence-qualified model.
+See checkpoint-manifest.md and architecture/ for evidence-qualified details.
