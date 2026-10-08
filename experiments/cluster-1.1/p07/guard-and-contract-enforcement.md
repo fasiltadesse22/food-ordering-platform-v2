@@ -22,49 +22,54 @@ If P07 guards are correct:
 - successful acceptance preserves identity/stable data, reaches ACCEPTED and appends exactly one acceptance occurrence;
 - a guard failure through the application service leaves repository current state unchanged.
 
-## Predictions
-
-1. Wrong restaurant + PLACED + ACCEPT → OrderGuardViolationException.
-2. Wrong customer + PLACED + CANCEL → OrderGuardViolationException.
-3. Wrong restaurant + PLACED + START_PREPARATION → state error first, because state precondition fails before ownership guard.
-4. CANCELLED without PAYMENT_RECORDED + refund request → refund-payment guard failure.
-5. ACCEPTED after payment + refund request → refund-state guard failure.
-6. Correct acceptance satisfies target-state and preservation postconditions.
-7. Paid REJECTED Order can record REFUND_REQUESTED without changing REJECTED status.
-8. Application-level guard failure does not replace repository current state.
-
-## Setup
-
-Executable tests:
-- OrderGuardAndContractTest
-- OrderWorkflowGuardIntegrationTest
-- evolved OrderStateMachineTest
-- evolved workflow tests.
-
-## Controlled variables
-
-Experiments vary:
-- acting business identity;
-- lifecycle state;
-- presence/absence of PAYMENT_RECORDED.
-
-They keep:
-- one process;
-- same repository;
-- no authentication framework;
-- no database;
-- no concurrent writer;
-- no real payment provider.
-
 ## Execution
 
-Authoritative command:
+GitHub Actions run: 37753011313
+
+Command:
 
 mvn -B -ntp verify
 
 ## Observation
 
-Pending P07 CI.
+OrderGuardAndContractTest:
+- tests run: 7
+- failures: 0
+- errors: 0
+- skipped: 0
+
+OrderWorkflowGuardIntegrationTest:
+- tests run: 1
+- failures: 0
+- errors: 0
+- skipped: 0
+
+Whole reactor:
+- tests run: 36
+- failures: 0
+- errors: 0
+- skipped: 0
+- BUILD SUCCESS
+
+## Evidence
+
+Observed:
+- wrong restaurant + PLACED + ACCEPT was rejected by RESTAURANT_DOES_NOT_OWN_ORDER;
+- wrong customer + PLACED + CANCEL was rejected by CUSTOMER_DOES_NOT_OWN_ORDER;
+- wrong restaurant + PLACED + START_PREPARATION failed the state precondition first;
+- CANCELLED without PAYMENT_RECORDED could not request refund;
+- ACCEPTED after payment could not request refund;
+- successful acceptance preserved identity, ownership, order content, placedAt and total, changed state to ACCEPTED and appended exactly one acceptance occurrence;
+- paid REJECTED Order could request refund without changing REJECTED lifecycle state;
+- application-level restaurant guard failure left the exact same repository Order instance authoritative.
+
+## Interpretation
+
+State-source legality is necessary but not sufficient.
+
+Contextual business facts must also satisfy the operation contract.
+
+Successful operations have observable postconditions; failed guards preserve current state.
 
 ## Limitations
 
@@ -78,4 +83,4 @@ The experiment does not prove:
 
 ## Conclusion
 
-Pending execution evidence.
+P07 successfully adds contextual guard and contract enforcement without introducing security, persistence or concurrency mechanisms.
