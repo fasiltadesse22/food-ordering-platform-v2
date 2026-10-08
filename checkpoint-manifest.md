@@ -1,35 +1,35 @@
-# Checkpoint Manifest — C1.1-P10 Candidate
+# Checkpoint Manifest — C1.1-P10
 
 ## Identity
 
-- Target checkpoint: C1.1-P10
-- Current status: CANDIDATE — NOT FROZEN
+- Checkpoint: C1.1-P10
+- Current status: VERIFIED AND FROZEN
 - Inherited checkpoint: C1.1-P09
 - Inherited branch: checkpoints/C1.1-P09
 - Inherited commit: 7ed3b6dd8862a0f0162f63f234fea8a2163a1bf6
+- P10 implementation commit: 3052ed76d4ceca0093baafe0b7144acc44842638
+- P10 verification run: 37791411073
 
 ## Engineering question
 
 Which rules define valid business state, which only validate input shape, and which are persistence enforcement mechanisms?
 
-## Project changes
+## Verified rule layers
 
 Boundary validation:
-- Bean Validation on PlaceOrderRequest and CancelOrderRequest;
-- malformed HTTP request shape maps to 400 before use-case/domain evaluation.
+- Bean Validation rejects malformed HTTP request shape before use-case/domain evaluation.
 
 Domain structural validation:
-- existing CustomerId, RestaurantId and OrderLine validation remains active for non-HTTP callers.
+- CustomerId, RestaurantId and OrderLine defend structural validity outside HTTP.
 
 Business invariants:
-- OrderInvariants verifies current state/history coherence on each Order construction/evolution;
-- impossible internal combinations raise OrderInvariantViolationException.
+- OrderInvariants verifies state/history coherence whenever an Order representation is constructed/evolved.
 
 Future database constraints:
 - documented only;
-- no schema/database introduced in P10.
+- not executed or claimed.
 
-## Semantic classification
+## Verified distinctions
 
 Validation != invariant.
 
@@ -37,28 +37,45 @@ Invariant != database constraint.
 
 Guard/precondition != invariant.
 
-A database constraint may reinforce a semantic rule but does not become the semantic definition of that rule.
+A structurally valid set of facts can still violate an invariant.
 
-## Evidence status
+## Verification
 
-Pending P10 CI.
+GitHub Actions executed:
 
-## Mechanisms deliberately absent
+mvn -B -ntp verify
 
+Observed:
+
+Tests run: 62, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+
+## Architectural interpretation
+
+P10 establishes semantic rule ownership before persistence is introduced.
+
+The project still contains no:
 - PostgreSQL;
 - migrations;
-- @Transactional;
 - JDBC/JPA;
+- @Transactional;
 - Testcontainers database;
 - optimistic locking;
 - distributed coordination.
 
-## Freeze gate
+## Evidence-qualified guarantees
 
-1. root Maven verification succeeds;
-2. inherited P01-P09 tests remain green;
-3. HTTP boundary validation tests pass;
-4. domain structural validation tests pass;
-5. structurally valid but invariant-invalid state/history is rejected by OrderInvariants;
-6. valid terminal compensation history remains invariant-valid;
-7. public lifecycle behavior still prevents invariant violation before construction.
+Within the tested one-process model:
+- selected structural request/value validation is enforced;
+- selected Order state/history invariants are enforced;
+- normal lifecycle behavior prevents invariant-invalid construction.
+
+Not guaranteed:
+- durable database enforcement;
+- concurrent invariant preservation;
+- atomic multi-change commit;
+- stale-state safety.
+
+## Next pressure
+
+Part 1.1.11 must determine which related changes belong to one logical decision and demonstrate what partial mutation/failure would mean before real database transactions arrive.

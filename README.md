@@ -1,13 +1,16 @@
 # Food Ordering Platform — V8.0 Fresh-Start Evolution
 
-Inherited verified checkpoint: C1.1-P09
-Current evolution: C1.1-P10 candidate — Business Invariants, Validation Rules and Database Constraints
+Current verified checkpoint: C1.1-P10 — Business Invariants, Validation Rules and Database Constraints
+Previous checkpoint: checkpoints/C1.1-P09
 
 ## Verification
 
 mvn -B -ntp verify
 
-P10 is not frozen until GitHub Actions verifies the exact candidate.
+P10 implementation verification:
+
+Tests run: 62, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
 
 ## Rule layers
 
@@ -22,7 +25,7 @@ Business invariants:
 
 Future database constraints:
 - documented for Cluster 1.2;
-- not implemented in P10.
+- not implemented or claimed in P10.
 
 ## Important distinction
 
