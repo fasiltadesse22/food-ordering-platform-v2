@@ -1,28 +1,31 @@
 # Food Ordering Platform — V8.0 Fresh-Start Evolution
 
-Inherited verified checkpoint: C1.1-P05
-Current evolution: C1.1-P06 candidate — State Machines and Legal/Illegal Transitions
+Current verified checkpoint: C1.1-P06 — State Machines and Legal/Illegal Transitions
+Previous checkpoint: checkpoints/C1.1-P05
 
 ## Verification
 
 mvn -B -ntp verify
 
-P06 is not frozen until GitHub Actions verifies the exact candidate.
+P06 implementation verification:
+
+Tests run: 28, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
 
 ## Current Order lifecycle
 
 PLACED
-  → ACCEPTED → PREPARING → COMPLETED
-  → REJECTED
-  → CANCELLED
+  ├→ ACCEPTED → PREPARING → COMPLETED
+  ├→ REJECTED
+  └→ CANCELLED
 
 Payment/refund remain workflow milestones rather than OrderStatus values.
 
 ## Important boundary
 
-P06 enforces source-state legality only.
+P06 enforces source-state legality.
 
-It does not yet fully define:
+It deliberately does not yet fully define:
 - contextual guards/preconditions;
 - terminality;
 - reversibility/compensation;

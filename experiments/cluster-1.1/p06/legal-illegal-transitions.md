@@ -13,59 +13,77 @@ If lifecycle transitions are modeled explicitly:
 - preparation from PLACED, rejection after ACCEPTED and completion before PREPARING will be rejected;
 - an illegal transition will not mutate current Order state or append the attempted workflow occurrence.
 
-## Predictions
-
-1. PLACED → ACCEPTED → PREPARING → COMPLETED succeeds.
-2. PLACED → REJECTED succeeds.
-3. PLACED → CANCELLED succeeds.
-4. PAYMENT_RECORDED leaves lifecycle state PLACED.
-5. START_PREPARATION from PLACED throws IllegalOrderTransitionException.
-6. REJECT from ACCEPTED throws IllegalOrderTransitionException.
-7. COMPLETE from ACCEPTED throws IllegalOrderTransitionException.
-8. The P05 preparation-before-acceptance fragility is no longer recordable.
-
-## Setup
-
-Executable tests:
-- OrderStateMachineTest
-- evolved OrderWorkflowDiscoveryTest
-- evolved OrderWorkflowSpringIntegrationTest
-
-## Controlled variables
-
-The tests vary:
-- current OrderStatus;
-- attempted transition.
-
-They keep:
-- one JVM;
-- the same in-memory repository;
-- no database;
-- no concurrent writers;
-- no real external payment;
-- no retries.
-
 ## Execution
 
-Authoritative command:
+GitHub Actions run: 37744525908
+
+Command:
 
 mvn -B -ntp verify
 
 ## Observation
 
-Pending P06 CI.
+OrderStateMachineTest:
+- tests run: 7
+- failures: 0
+- errors: 0
+- skipped: 0
 
-## Evidence interpretation
+Evolved OrderWorkflowDiscoveryTest:
+- tests run: 5
+- failures: 0
+- errors: 0
+- skipped: 0
 
-A rejected illegal transition demonstrates state-source legality.
+OrderWorkflowSpringIntegrationTest:
+- tests run: 1
+- failures: 0
+- errors: 0
+- skipped: 0
 
-It does not yet demonstrate:
-- actor authorization;
-- payment-dependent guards;
-- temporal deadlines;
+Whole reactor:
+- tests run: 28
+- failures: 0
+- errors: 0
+- skipped: 0
+- BUILD SUCCESS
+
+## Evidence
+
+Observed legal fulfillment path:
+PLACED → ACCEPTED → PREPARING → COMPLETED
+
+Observed legal branches:
+PLACED → REJECTED
+PLACED → CANCELLED
+
+Observed orthogonal milestone:
+PAYMENT_RECORDED leaves OrderStatus at PLACED.
+
+Observed illegal transitions:
+- START_PREPARATION from PLACED rejected;
+- REJECT from ACCEPTED rejected;
+- COMPLETE from ACCEPTED rejected.
+
+The evolved P05 regression verifies that preparation-before-acceptance is rejected before repository replacement or workflow append.
+
+## Interpretation
+
+P06 closes the specific lifecycle-ordering fragility demonstrated by P05.
+
+The state machine now enforces source-state legality.
+
+## Limitations
+
+This does not yet establish:
+- actor/contextual guards;
+- payment-dependent preconditions;
+- terminality;
+- reversibility/compensation;
 - concurrency correctness;
-- terminal/reversal semantics.
+- stale-write protection;
+- repeated-command semantics.
 
 ## Conclusion
 
-Pending execution evidence.
+The evidence supports explicit lifecycle-state legality while preserving the remaining pressures for P07 and later parts.

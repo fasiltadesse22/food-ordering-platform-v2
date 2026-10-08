@@ -1,20 +1,18 @@
-# Checkpoint Manifest — C1.1-P06 Candidate
+# Checkpoint Manifest — C1.1-P06
 
 ## Identity
 
-- Target checkpoint: C1.1-P06
-- Current status: CANDIDATE — NOT FROZEN
+- Checkpoint: C1.1-P06
+- Current status: VERIFIED AND FROZEN
 - Inherited checkpoint: C1.1-P05
 - Inherited branch: checkpoints/C1.1-P05
 - Inherited commit: 2e63f12ea30fc211b6a5450654536415aaaa164d
+- P06 implementation commit: 697fb55ab5bda075ed38840d3241d3c4aea1de02
+- P06 verification run: 37744525908
 
 ## Engineering question
 
 Which lifecycle transitions are valid, and which must be impossible?
-
-## Prediction
-
-A small explicit lifecycle model derived from P05 can preserve legitimate workflow branches while rejecting the contradictory ordering P05 intentionally allowed.
 
 ## Lifecycle states
 
@@ -25,7 +23,7 @@ A small explicit lifecycle model derived from P05 can preserve legitimate workfl
 - PREPARING
 - COMPLETED
 
-## Legal transitions introduced
+## Verified legal transitions
 
 - PLACED → ACCEPTED
 - PLACED → REJECTED
@@ -33,27 +31,30 @@ A small explicit lifecycle model derived from P05 can preserve legitimate workfl
 - ACCEPTED → PREPARING
 - PREPARING → COMPLETED
 
-Payment and refund remain orthogonal workflow milestones.
+Payment/refund remain orthogonal workflow milestones.
 
-## Source evolution
+## Verification
 
-- expanded OrderStatus;
-- added OrderLifecycleTransition;
-- added IllegalOrderTransitionException;
-- evolved Order lifecycle methods to transition through explicit source/target rules;
-- retained immutable Order evolution and workflow trace;
-- retained OrderWorkflowService as the application coordinator.
+GitHub Actions executed:
 
-## Test evolution
+mvn -B -ntp verify
 
-- added OrderStateMachineTest;
-- evolved P05 workflow tests to assert real lifecycle state;
-- evolved Spring workflow integration to end at COMPLETED;
-- converted the P05 contradictory scenario into an illegal-transition regression.
+Observed:
+
+Tests run: 28, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+
+## Verified illegal examples
+
+- PLACED → START_PREPARATION rejected;
+- ACCEPTED → REJECT rejected;
+- ACCEPTED → COMPLETE rejected.
+
+Rejected attempts leave the existing immutable Order representation unchanged and do not append the attempted workflow occurrence.
 
 ## Architectural interpretation
 
-P06 introduces lifecycle legality, not a generic workflow engine.
+P06 introduces explicit lifecycle legality, not a workflow engine or state-machine framework.
 
 The project still contains no:
 - state-machine framework;
@@ -67,28 +68,22 @@ The project still contains no:
 - distributed lock;
 - service split.
 
-## Evidence status
+## Evidence-qualified guarantees
 
-Pending P06 CI.
+Within the tested one-process model:
+- selected legal transitions succeed;
+- selected illegal transitions fail before current-state replacement;
+- P05 preparation-before-acceptance fragility is closed;
+- payment can be recorded while lifecycle remains PLACED.
 
-## Fragilities intentionally preserved
-
-- no contextual guard beyond source state;
-- no cancellation-after-acceptance policy;
-- no explicit terminal/reversal semantics;
-- no concurrency protection;
-- no duplicate-command behavior;
-- no durability.
+Not guaranteed:
+- rich contextual guards;
+- terminal/reversal semantics;
+- concurrency correctness;
+- stale-write rejection;
+- repeated-command safety;
+- durability.
 
 ## Next pressure
 
-Part 1.1.7 must deepen guards, preconditions and postconditions: state source is necessary but may not be sufficient for deciding whether an operation is valid.
-
-## Freeze gate
-
-1. mvn -B -ntp verify succeeds;
-2. inherited behavior remains green where still semantically valid;
-3. legal transition tests pass;
-4. illegal transition tests pass;
-5. illegal attempts leave current state unchanged;
-6. P05 contradiction is closed by executable evidence.
+Part 1.1.7 deepens guards, preconditions and postconditions: a source state can be necessary for a transition without being sufficient to authorize it.
