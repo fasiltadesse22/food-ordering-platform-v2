@@ -102,13 +102,50 @@ public final class Order {
         );
     }
 
+    /**
+     * REFUND_REQUESTED is a compensating workflow action. It does not erase
+     * PAYMENT_RECORDED and does not reopen/change the terminal Order lifecycle.
+     */
     public Order recordRefundRequest(Instant occurredAt) {
         requireRefundEligible();
+        requireRefundNotAlreadyRequested();
 
         return recordMilestone(
                 OrderWorkflowAction.REFUND_REQUESTED,
                 WorkflowParticipant.PLATFORM,
                 occurredAt
+        );
+    }
+
+    public Order modifyLines(
+            CustomerId actingCustomerId,
+            List<OrderLine> replacementLines,
+            Instant occurredAt
+    ) {
+        requireOwningCustomer(actingCustomerId);
+        requirePlacedForModification();
+
+        Objects.requireNonNull(replacementLines, "replacementLines must not be null");
+        if (replacementLines.isEmpty()) {
+            throw new IllegalArgumentException("an order must contain at least one line");
+        }
+        Objects.requireNonNull(occurredAt, "occurredAt must not be null");
+
+        var updatedWorkflow = new ArrayList<>(workflowOccurrences);
+        updatedWorkflow.add(new OrderWorkflowOccurrence(
+                OrderWorkflowAction.ORDER_MODIFIED,
+                WorkflowParticipant.CUSTOMER,
+                occurredAt
+        ));
+
+        return new Order(
+                id,
+                customerId,
+                restaurantId,
+                replacementLines,
+                status,
+                placedAt,
+                updatedWorkflow
         );
     }
 
@@ -202,6 +239,27 @@ public final class Order {
                     id,
                     OrderGuardViolationException.Code.REFUND_REQUIRES_RECORDED_PAYMENT,
                     "refund request requires a recorded payment for order " + id
+            );
+        }
+    }
+
+    private void requireRefundNotAlreadyRequested() {
+        if (hasWorkflowAction(OrderWorkflowAction.REFUND_REQUESTED)) {
+            throw new OrderGuardViolationException(
+                    id,
+                    OrderGuardViolationException.Code.REFUND_ALREADY_REQUESTED,
+                    "refund has already been requested for order " + id
+            );
+        }
+    }
+
+    private void requirePlacedForModification() {
+        if (status != OrderStatus.PLACED) {
+            throw new OrderGuardViolationException(
+                    id,
+                    OrderGuardViolationException.Code.MODIFICATION_REQUIRES_PLACED_ORDER,
+                    "order modification requires PLACED state, but order "
+                            + id + " was " + status
             );
         }
     }

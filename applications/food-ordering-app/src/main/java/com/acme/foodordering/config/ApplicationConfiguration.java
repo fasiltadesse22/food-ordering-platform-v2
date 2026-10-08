@@ -2,10 +2,12 @@ package com.acme.foodordering.config;
 
 import com.acme.foodordering.adapter.out.inmemory.InMemoryOrderRepository;
 import com.acme.foodordering.application.port.in.GetOrderUseCase;
+import com.acme.foodordering.application.port.in.ModifyOrderUseCase;
 import com.acme.foodordering.application.port.in.OrderWorkflowUseCase;
 import com.acme.foodordering.application.port.in.PlaceOrderUseCase;
 import com.acme.foodordering.application.port.out.OrderRepository;
 import com.acme.foodordering.application.service.GetOrderService;
+import com.acme.foodordering.application.service.ModifyOrderService;
 import com.acme.foodordering.application.service.OrderWorkflowService;
 import com.acme.foodordering.application.service.PlaceOrderService;
 import org.springframework.context.annotation.Bean;
@@ -39,5 +41,10 @@ public class ApplicationConfiguration {
     @Bean
     OrderWorkflowUseCase orderWorkflowUseCase(OrderRepository orderRepository, Clock clock) {
         return new OrderWorkflowService(orderRepository, clock);
+    }
+
+    @Bean
+    ModifyOrderUseCase modifyOrderUseCase(OrderRepository orderRepository, Clock clock) {
+        return new ModifyOrderService(orderRepository, clock);
     }
 }

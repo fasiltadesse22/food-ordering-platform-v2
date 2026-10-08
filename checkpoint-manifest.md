@@ -1,96 +1,71 @@
-# Checkpoint Manifest — C1.1-P07
+# Checkpoint Manifest — C1.1-P08 Candidate
 
 ## Identity
 
-- Checkpoint: C1.1-P07
-- Current status: VERIFIED AND FROZEN
-- Inherited checkpoint: C1.1-P06
-- Inherited branch: checkpoints/C1.1-P06
-- Inherited commit: a0a11c303b11554545e9dac08d5f64661b1e217f
-- P07 implementation commit: e20d29a87a5a969a40f9ed8c1f8782b3877f9581
-- P07 verification run: 37753011313
+- Target checkpoint: C1.1-P08
+- Current status: CANDIDATE — NOT FROZEN
+- Inherited checkpoint: C1.1-P07
+- Inherited branch: checkpoints/C1.1-P07
+- Inherited commit: 6f4ca2c2d073575f6eaa831e0031d6f7205e124e
 
 ## Engineering question
 
-Even when a transition is structurally legal from the current state, what additional facts must be true before it is allowed, and what must be true afterward?
+Which lifecycle outcomes can truly be undone, which cannot, and when must the business perform a new compensating action instead of pretending the original fact never occurred?
 
-## Verified preconditions and guards
+## Current terminal classification
 
-Restaurant-side lifecycle actions:
-- P06 source-state legality;
-- acting RestaurantId must equal Order.restaurantId.
+Terminal:
+- REJECTED
+- CANCELLED
+- COMPLETED
 
-Cancellation:
-- P06 source-state legality;
-- acting CustomerId must equal Order.customerId.
+Nonterminal:
+- PLACED
+- ACCEPTED
+- PREPARING
 
-Refund request:
-- lifecycle must be REJECTED or CANCELLED;
-- PAYMENT_RECORDED must exist.
+## Compensation semantics
 
-## Verified postconditions
+- PAYMENT_RECORDED is retained as historical truth;
+- REFUND_REQUESTED is a new compensating workflow occurrence;
+- refund request does not reopen or change terminal OrderStatus;
+- second refund request is rejected in the current semantic model.
 
-For successful acceptance:
-- OrderId preserved;
-- CustomerId preserved;
-- RestaurantId preserved;
-- lines preserved;
-- placedAt preserved;
-- total preserved;
-- status becomes ACCEPTED;
-- exactly one RESTAURANT_ACCEPTED occurrence is appended;
-- original immutable Order remains unchanged.
+## Modification semantics
 
-For failed contextual guard through the application service:
-- repository current state is not replaced;
-- attempted occurrence is absent.
+- real ModifyOrderUseCase added;
+- owning customer may modify while PLACED;
+- terminal Orders cannot be modified;
+- modification keeps OrderStatus PLACED and appends ORDER_MODIFIED.
 
-## Verification
+## Important preserved fragility
 
-GitHub Actions executed:
+A paid Order remains PLACED and can therefore still be modified.
 
-mvn -B -ntp verify
+P08 intentionally does not solve modification-after-payment.
 
-Observed:
+## Evidence status
 
-Tests run: 36, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
+Pending P08 CI.
 
-## Architectural interpretation
+## Mechanisms deliberately absent
 
-P07 adds domain guards and transition contracts.
-
-It does not add authentication/security infrastructure.
-
-Typed acting CustomerId/RestaurantId is claimed/trusted application context, not proof of caller identity.
-
-The project still contains no:
-- Spring Security lifecycle authorization flow;
+- Saga;
+- rollback coordinator;
+- external refund provider;
+- Event Sourcing;
 - PostgreSQL;
 - Kafka;
 - Redis;
-- Saga;
-- Outbox;
 - optimistic locking;
-- distributed lock;
-- service split.
+- distributed lock.
 
-## Evidence-qualified guarantees
+## Freeze gate
 
-Within the tested one-process model:
-- selected contextual ownership guards reject mismatched identities;
-- selected refund preconditions reject invalid requests;
-- successful transition postconditions hold;
-- failed guards prevent authoritative-state replacement.
-
-Not guaranteed:
-- identity authenticity;
-- stale-state correctness;
-- concurrency safety;
-- duplicate safety;
-- durability;
-- external refund behavior.
-
-## Next pressure
-
-Part 1.1.8 must classify terminal, reversible and irreversible lifecycle outcomes and distinguish reversal from compensation.
+1. root Maven verification succeeds;
+2. inherited tests remain green;
+3. terminal state classification is verified;
+4. refund compensation history is verified;
+5. duplicate semantic refund is rejected;
+6. cancel-completed and modify-terminal tests pass;
+7. ModifyOrderUseCase works for PLACED Orders.

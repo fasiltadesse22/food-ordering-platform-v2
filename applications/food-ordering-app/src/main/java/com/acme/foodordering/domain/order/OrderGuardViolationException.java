@@ -6,7 +6,9 @@ public final class OrderGuardViolationException extends RuntimeException {
         CUSTOMER_DOES_NOT_OWN_ORDER,
         RESTAURANT_DOES_NOT_OWN_ORDER,
         REFUND_REQUIRES_RECORDED_PAYMENT,
-        REFUND_REQUIRES_REJECTED_OR_CANCELLED_ORDER
+        REFUND_REQUIRES_REJECTED_OR_CANCELLED_ORDER,
+        REFUND_ALREADY_REQUESTED,
+        MODIFICATION_REQUIRES_PLACED_ORDER
     }
 
     private final OrderId orderId;
