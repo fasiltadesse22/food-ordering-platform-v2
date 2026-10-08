@@ -1,12 +1,14 @@
-# Checkpoint Manifest — C1.1-P05 Candidate
+# Checkpoint Manifest — C1.1-P05
 
 ## Identity
 
-- Target checkpoint: C1.1-P05
-- Current status: CANDIDATE — NOT FROZEN
+- Checkpoint: C1.1-P05
+- Current status: VERIFIED AND FROZEN
 - Inherited checkpoint: C1.1-P04
 - Inherited branch: checkpoints/C1.1-P04
 - Inherited commit: dfcea735542790ea4b424abdc6ae2f2dcde4a796
+- P05 implementation commit: fa37c3b0cff91e3812cc0d6fa10373c9d46a9daf
+- P05 verification run: 37738287058
 
 ## Engineering question
 
@@ -27,12 +29,26 @@ A permissive workflow recorder can make end-to-end paths executable while preser
 
 ## Executable scenarios
 
+Verified:
 - happy path;
 - restaurant rejection after recorded payment with refund-request handoff;
 - cancellation before payment;
 - cancellation after payment with refund-request handoff;
 - contradictory/out-of-order sequence demonstrating missing transition guards;
 - Spring integration proving workflow updates the same current Order.
+
+## Verification
+
+GitHub Actions executed:
+
+mvn -B -ntp verify
+
+Observed:
+
+Tests run: 21, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+
+All inherited P01-P04 tests remained green.
 
 ## Architectural interpretation
 
@@ -52,27 +68,31 @@ The project still contains no:
 - optimistic locking;
 - service decomposition.
 
-## Evidence status
+## Evidence-qualified guarantees
 
-Pending P05 CI.
+Within the tested one-process learning model:
+- selected workflow branches are reproducible;
+- participant handoffs are explicit;
+- current workflow progress is observable;
+- suspicious sequencing is not currently rejected.
+
+Not guaranteed:
+- business validity of every recorded sequence;
+- external payment/refund effects;
+- transition legality;
+- durability;
+- concurrency correctness;
+- duplicate safety.
 
 ## Fragilities intentionally preserved
 
-- any milestone ordering can currently be recorded;
 - restaurant acceptance and rejection can both appear;
 - preparation can be recorded before acceptance;
 - completion has no formal prerequisites;
-- payment/refund are local workflow representations only;
+- current status remains PLACED;
+- payment/refund are local representations only;
 - current state remains transient.
 
 ## Next pressure
 
 Part 1.1.6 must derive explicit lifecycle states and legal/illegal transitions from the P05 workflow evidence rather than inventing them independently.
-
-## Freeze gate
-
-1. root mvn -B -ntp verify succeeds;
-2. inherited P01-P04 tests remain green;
-3. new workflow path tests pass;
-4. contradictory/out-of-order path is reproduced as evidence of missing state-machine guards;
-5. evidence is recorded without calling that fragility a valid business path.

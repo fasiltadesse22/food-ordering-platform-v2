@@ -1,17 +1,20 @@
 # Food Ordering Platform — V8.0 Fresh-Start Evolution
 
-Inherited verified checkpoint: C1.1-P04
-Current evolution: C1.1-P05 candidate — End-to-End Workflow Discovery
+Current verified checkpoint: C1.1-P05 — End-to-End Workflow Discovery
+Previous checkpoint: checkpoints/C1.1-P04
 
 ## Verification
 
 mvn -B -ntp verify
 
-P05 is not frozen until GitHub Actions verifies the exact candidate.
+P05 implementation verification:
+
+Tests run: 21, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
 
 ## Current workflow model
 
-The project can record selected in-process workflow milestones for:
+The project records selected in-process workflow milestones for:
 - payment;
 - restaurant acceptance/rejection;
 - cancellation;
@@ -29,6 +32,7 @@ Order.status remains PLACED because P05 is workflow discovery, not the lifecycle
 - REFUND_REQUESTED is not REFUND_COMPLETED.
 - workflow occurrence list is not Event Sourcing.
 - participant handoffs do not imply service/network boundaries.
+- contradictory sequences currently remaining executable is evidence of missing lifecycle guards.
 
 ## Current topology
 

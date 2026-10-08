@@ -42,19 +42,69 @@ Tests vary the milestone sequence while keeping:
 
 ## Execution
 
-Authoritative command:
+GitHub Actions run: 37738287058
+
+Command:
 
 mvn -B -ntp verify
 
 ## Observation
 
-Pending P05 GitHub Actions run.
+OrderWorkflowDiscoveryTest:
+- tests run: 5
+- failures: 0
+- errors: 0
+- skipped: 0
 
-## Evidence interpretation rule
+OrderWorkflowSpringIntegrationTest:
+- tests run: 1
+- failures: 0
+- errors: 0
+- skipped: 0
 
-If the suspicious-sequence test passes, record that as evidence of a missing legality mechanism.
+Whole reactor:
+- tests run: 21
+- failures: 0
+- errors: 0
+- skipped: 0
+- BUILD SUCCESS
 
-Do not report it as a valid business guarantee.
+## Evidence
+
+Observed happy path:
+PAYMENT_RECORDED
+→ RESTAURANT_ACCEPTED
+→ PREPARATION_STARTED
+→ ORDER_COMPLETED
+
+Observed rejection path:
+PAYMENT_RECORDED
+→ RESTAURANT_REJECTED
+→ REFUND_REQUESTED
+
+Observed cancellation-before-payment branch:
+ORDER_CANCELLED
+
+Observed cancellation-after-payment branch:
+PAYMENT_RECORDED
+→ ORDER_CANCELLED
+→ REFUND_REQUESTED
+
+Observed pre-state-machine fragility:
+PREPARATION_STARTED
+→ RESTAURANT_ACCEPTED
+→ RESTAURANT_REJECTED
+→ ORDER_COMPLETED
+
+The suspicious sequence was accepted by the P05 recorder and Order.status remained PLACED.
+
+## Interpretation
+
+The project can now execute multiple workflow paths and participant handoffs.
+
+The contradictory path passing is evidence that workflow discovery alone does not enforce lifecycle correctness.
+
+It is therefore pressure for P06, not a business guarantee.
 
 ## Limitations
 
@@ -70,4 +120,4 @@ The experiment does not establish:
 
 ## Conclusion
 
-Pending execution evidence.
+P05 successfully makes the workflow executable while preserving the missing-state-machine fragility required for the next part.
