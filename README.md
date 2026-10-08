@@ -1,45 +1,41 @@
 # Food Ordering Platform — V8.0 Fresh-Start Evolution
 
-Current verified checkpoint: C1.1-P09 — Business Failure Versus Technical Failure
-Previous checkpoint: checkpoints/C1.1-P08
+Inherited verified checkpoint: C1.1-P09
+Current evolution: C1.1-P10 candidate — Business Invariants, Validation Rules and Database Constraints
 
 ## Verification
 
 mvn -B -ntp verify
 
-P09 implementation verification:
+P10 is not frozen until GitHub Actions verifies the exact candidate.
 
-Tests run: 53, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
+## Rule layers
 
-## Failure semantics
+HTTP boundary validation:
+- rejects malformed request shape early.
 
-Expected business outcome:
-- Accepted
-- Rejected with stable business code
+Domain structural validation:
+- protects identifier and line value objects even outside HTTP.
 
-Verified examples:
-- illegal transition;
-- wrong owner;
-- unknown Order.
+Business invariants:
+- Order state/history coherence is verified whenever an Order representation is constructed.
 
-Technical failure:
-- repository/runtime/programming failure that prevents correct execution.
+Future database constraints:
+- documented for Cluster 1.2;
+- not implemented in P10.
 
-Technical failures are not converted to business rejection.
+## Important distinction
 
-## HTTP example
+Passing validation does not prove business invariant correctness.
 
-POST /orders/{orderId}/cancel
+A database constraint can reinforce a rule without becoming the business rule itself.
 
-- 200 accepted
-- 403 ownership rejection
-- 404 unknown Order
-- 409 lifecycle conflict
-- 500 unexpected technical failure
+## Current topology
 
-## Important boundary
-
-P09 classifies failure. It does not add retry, timeout, fallback or circuit breaker mechanisms.
+- one Java 21 / Spring Boot deployable;
+- in-memory repository;
+- no PostgreSQL;
+- no transaction manager;
+- no messaging.
 
 See checkpoint-manifest.md and architecture/ for evidence-qualified details.

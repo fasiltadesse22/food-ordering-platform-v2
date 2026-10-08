@@ -1,80 +1,64 @@
-# Checkpoint Manifest — C1.1-P09
+# Checkpoint Manifest — C1.1-P10 Candidate
 
 ## Identity
 
-- Checkpoint: C1.1-P09
-- Current status: VERIFIED AND FROZEN
-- Inherited checkpoint: C1.1-P08
-- Inherited branch: checkpoints/C1.1-P08
-- Inherited commit: c6e6d78f42e5e3c47125adaffa6f675e6207b54f
-- P09 implementation commit: b232967485ee78f1cba56c26ca4b864dc07d10ea
-- P09 verification run: 37785102920
+- Target checkpoint: C1.1-P10
+- Current status: CANDIDATE — NOT FROZEN
+- Inherited checkpoint: C1.1-P09
+- Inherited branch: checkpoints/C1.1-P09
+- Inherited commit: 7ed3b6dd8862a0f0162f63f234fea8a2163a1bf6
 
 ## Engineering question
 
-When an operation does not produce the requested outcome, did the system correctly reject the business request, or did the system itself fail to execute correctly?
+Which rules define valid business state, which only validate input shape, and which are persistence enforcement mechanisms?
 
-## Verified application semantics
+## Project changes
 
-Expected business outcomes:
-- Accepted(OrderSnapshot)
-- Rejected(OrderActionRejection)
+Boundary validation:
+- Bean Validation on PlaceOrderRequest and CancelOrderRequest;
+- malformed HTTP request shape maps to 400 before use-case/domain evaluation.
 
-Verified rejection examples:
-- ILLEGAL_TRANSITION
-- CUSTOMER_DOES_NOT_OWN_ORDER
-- ORDER_NOT_FOUND
+Domain structural validation:
+- existing CustomerId, RestaurantId and OrderLine validation remains active for non-HTTP callers.
 
-Technical repository failures are not translated into Rejected.
+Business invariants:
+- OrderInvariants verifies current state/history coherence on each Order construction/evolution;
+- impossible internal combinations raise OrderInvariantViolationException.
 
-## Verified HTTP semantics
+Future database constraints:
+- documented only;
+- no schema/database introduced in P10.
 
-- accepted cancel -> 200
-- repeated cancel -> 409 / ILLEGAL_TRANSITION
-- wrong customer -> 403 / CUSTOMER_DOES_NOT_OWN_ORDER
-- unknown Order -> 404 / ORDER_NOT_FOUND
-- unexpected programming/runtime failure -> 500
+## Semantic classification
 
-NullPointerException is no longer classified as a 400 request error.
+Validation != invariant.
 
-## Verification
+Invariant != database constraint.
 
-GitHub Actions executed:
+Guard/precondition != invariant.
 
-mvn -B -ntp verify
+A database constraint may reinforce a semantic rule but does not become the semantic definition of that rule.
 
-Observed:
+## Evidence status
 
-Tests run: 53, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
+Pending P10 CI.
 
-## Architectural interpretation
+## Mechanisms deliberately absent
 
-P09 classifies failure before resilience mechanisms are introduced.
-
-The project still contains no:
-- retry/backoff;
-- timeout policy;
-- circuit breaker;
-- fallback;
 - PostgreSQL;
-- Kafka;
-- Redis;
-- distributed failure coordination.
+- migrations;
+- @Transactional;
+- JDBC/JPA;
+- Testcontainers database;
+- optimistic locking;
+- distributed coordination.
 
-## Evidence-qualified guarantees
+## Freeze gate
 
-Within the tested one-process model:
-- known expected domain rejection becomes an explicit application rejection;
-- selected repository mechanism failures remain technical;
-- selected HTTP adapter mappings preserve that distinction.
-
-Not guaranteed:
-- technical failure retryability;
-- remote dependency behavior;
-- durable persistence;
-- platform-wide failure observability.
-
-## Next pressure
-
-Part 1.1.10 must distinguish business invariants, validation rules and database constraints and make the correctness rules explicit independently of their enforcement mechanism.
+1. root Maven verification succeeds;
+2. inherited P01-P09 tests remain green;
+3. HTTP boundary validation tests pass;
+4. domain structural validation tests pass;
+5. structurally valid but invariant-invalid state/history is rejected by OrderInvariants;
+6. valid terminal compensation history remains invariant-valid;
+7. public lifecycle behavior still prevents invariant violation before construction.

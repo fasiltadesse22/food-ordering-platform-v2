@@ -9,6 +9,7 @@ import com.acme.foodordering.application.port.in.PlaceOrderResult;
 import com.acme.foodordering.application.port.in.PlaceOrderUseCase;
 import com.acme.foodordering.domain.order.CustomerId;
 import com.acme.foodordering.domain.order.OrderId;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -39,7 +40,9 @@ public class OrderController {
     }
 
     @PostMapping
-    public ResponseEntity<?> place(@RequestBody PlaceOrderRequest request) {
+    public ResponseEntity<?> place(
+            @Valid @RequestBody PlaceOrderRequest request
+    ) {
         var command = new PlaceOrderCommand(
                 request.customerId(),
                 request.restaurantId(),
@@ -64,19 +67,23 @@ public class OrderController {
             }
             case PlaceOrderResult.Rejected rejected ->
                     ResponseEntity.unprocessableEntity()
-                            .body(PlaceOrderRejectedResponse.from(rejected.rejection()));
+                            .body(PlaceOrderRejectedResponse.from(
+                                    rejected.rejection()
+                            ));
         };
     }
 
     @GetMapping("/{orderId}")
     public OrderResponse get(@PathVariable String orderId) {
-        return OrderResponse.from(getOrderUseCase.get(OrderId.from(orderId)));
+        return OrderResponse.from(
+                getOrderUseCase.get(OrderId.from(orderId))
+        );
     }
 
     @PostMapping("/{orderId}/cancel")
     public ResponseEntity<?> cancel(
             @PathVariable String orderId,
-            @RequestBody CancelOrderRequest request
+            @Valid @RequestBody CancelOrderRequest request
     ) {
         var result = workflowUseCase.recordCancellation(
                 OrderId.from(orderId),
@@ -85,20 +92,28 @@ public class OrderController {
         return toHttpResponse(result);
     }
 
-    private static ResponseEntity<?> toHttpResponse(OrderActionResult result) {
+    private static ResponseEntity<?> toHttpResponse(
+            OrderActionResult result
+    ) {
         return switch (result) {
             case OrderActionResult.Accepted accepted ->
-                    ResponseEntity.ok(OrderResponse.from(accepted.order()));
+                    ResponseEntity.ok(
+                            OrderResponse.from(accepted.order())
+                    );
             case OrderActionResult.Rejected rejected -> {
                 var status = statusFor(rejected.rejection().code());
                 yield ResponseEntity
                         .status(status)
-                        .body(OrderActionRejectedResponse.from(rejected.rejection()));
+                        .body(OrderActionRejectedResponse.from(
+                                rejected.rejection()
+                        ));
             }
         };
     }
 
-    private static HttpStatus statusFor(OrderActionRejection.Code code) {
+    private static HttpStatus statusFor(
+            OrderActionRejection.Code code
+    ) {
         return switch (code) {
             case ORDER_NOT_FOUND -> HttpStatus.NOT_FOUND;
             case CUSTOMER_DOES_NOT_OWN_ORDER,

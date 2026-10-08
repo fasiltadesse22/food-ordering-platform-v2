@@ -1,3 +1,7 @@
 package com.acme.foodordering.adapter.in.http;
 
-public record CancelOrderRequest(String customerId) {}
+import jakarta.validation.constraints.NotBlank;
+
+public record CancelOrderRequest(
+        @NotBlank String customerId
+) {}

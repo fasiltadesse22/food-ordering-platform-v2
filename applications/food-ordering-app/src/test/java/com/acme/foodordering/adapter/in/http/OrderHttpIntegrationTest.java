@@ -34,7 +34,7 @@ class OrderHttpIntegrationTest {
     }
 
     @Test
-    void rejectsAnEmptyOrderAsBadRequest() throws Exception {
+    void emptyOrderLinesFailHttpBoundaryValidation() throws Exception {
         mockMvc.perform(post("/orders")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -44,7 +44,52 @@ class OrderHttpIntegrationTest {
                                   "lines": []
                                 }
                                 """))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Invalid request"));
+    }
+
+    @Test
+    void blankCustomerIdFailsHttpBoundaryValidation() throws Exception {
+        mockMvc.perform(post("/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "customerId": " ",
+                                  "restaurantId": "restaurant-1",
+                                  "lines": [
+                                    {
+                                      "menuItemId": "burger-1",
+                                      "name": "Classic Burger",
+                                      "quantity": 1,
+                                      "unitPrice": 5.50
+                                    }
+                                  ]
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Invalid request"));
+    }
+
+    @Test
+    void nonPositiveQuantityFailsHttpBoundaryValidation() throws Exception {
+        mockMvc.perform(post("/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "customerId": "customer-validation",
+                                  "restaurantId": "restaurant-1",
+                                  "lines": [
+                                    {
+                                      "menuItemId": "burger-1",
+                                      "name": "Classic Burger",
+                                      "quantity": 0,
+                                      "unitPrice": 5.50
+                                    }
+                                  ]
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Invalid request"));
     }
 
     @Test
@@ -67,6 +112,20 @@ class OrderHttpIntegrationTest {
                                 """))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("ILLEGAL_TRANSITION"));
+    }
+
+    @Test
+    void blankCancellationCustomerFailsValidationBeforeBusinessEvaluation() throws Exception {
+        var location = placeOrder("customer-cancel-validation");
+        var orderId = location.substring("/orders/".length());
+
+        mockMvc.perform(post("/orders/{orderId}/cancel", orderId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"customerId":" "}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Invalid request"));
     }
 
     @Test
