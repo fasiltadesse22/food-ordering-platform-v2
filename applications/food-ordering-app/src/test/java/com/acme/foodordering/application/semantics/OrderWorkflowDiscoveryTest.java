@@ -6,7 +6,9 @@ import com.acme.foodordering.application.port.in.PlaceOrderResult;
 import com.acme.foodordering.application.service.OrderSnapshot;
 import com.acme.foodordering.application.service.OrderWorkflowService;
 import com.acme.foodordering.application.service.PlaceOrderService;
+import com.acme.foodordering.domain.order.IllegalOrderTransitionException;
 import com.acme.foodordering.domain.order.OrderId;
+import com.acme.foodordering.domain.order.OrderLifecycleTransition;
 import com.acme.foodordering.domain.order.workflow.OrderWorkflowAction;
 import com.acme.foodordering.domain.order.workflow.WorkflowParticipant;
 import org.junit.jupiter.api.Test;
@@ -18,6 +20,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class OrderWorkflowDiscoveryTest {
 
@@ -27,13 +30,18 @@ class OrderWorkflowDiscoveryTest {
     private final OrderWorkflowService workflow = new OrderWorkflowService(repository, clock);
 
     @Test
-    void happyPathRecordsPaymentAcceptancePreparationAndCompletionHandoffs() {
+    void happyPathPreservesWorkflowAndNowEvolvesLifecycleState() {
         var orderId = placeOrder();
 
-        workflow.recordPayment(orderId);
-        workflow.recordRestaurantAcceptance(orderId);
-        workflow.recordPreparationStarted(orderId);
+        var paid = workflow.recordPayment(orderId);
+        var accepted = workflow.recordRestaurantAcceptance(orderId);
+        var preparing = workflow.recordPreparationStarted(orderId);
         var completed = workflow.recordCompletion(orderId);
+
+        assertThat(paid.status()).isEqualTo("PLACED");
+        assertThat(accepted.status()).isEqualTo("ACCEPTED");
+        assertThat(preparing.status()).isEqualTo("PREPARING");
+        assertThat(completed.status()).isEqualTo("COMPLETED");
 
         assertThat(actions(completed)).containsExactly(
                 OrderWorkflowAction.PAYMENT_RECORDED,
@@ -48,53 +56,49 @@ class OrderWorkflowDiscoveryTest {
                 WorkflowParticipant.RESTAURANT_OPERATOR,
                 WorkflowParticipant.RESTAURANT_OPERATOR
         );
-
-        // P05 records workflow but deliberately does not yet formalize lifecycle state.
-        assertThat(completed.status()).isEqualTo("PLACED");
     }
 
     @Test
-    void restaurantRejectionAfterRecordedPaymentExposesRefundHandoff() {
+    void restaurantRejectionFromPlacedStateProducesRejectedLifecycleState() {
         var orderId = placeOrder();
 
         workflow.recordPayment(orderId);
-        workflow.recordRestaurantRejection(orderId);
+        var rejected = workflow.recordRestaurantRejection(orderId);
         var refundRequested = workflow.recordRefundRequest(orderId);
+
+        assertThat(rejected.status()).isEqualTo("REJECTED");
+        assertThat(refundRequested.status()).isEqualTo("REJECTED");
 
         assertThat(actions(refundRequested)).containsExactly(
                 OrderWorkflowAction.PAYMENT_RECORDED,
                 OrderWorkflowAction.RESTAURANT_REJECTED,
                 OrderWorkflowAction.REFUND_REQUESTED
         );
-
-        assertThat(participants(refundRequested)).containsExactly(
-                WorkflowParticipant.PAYMENT_PARTICIPANT,
-                WorkflowParticipant.RESTAURANT_OPERATOR,
-                WorkflowParticipant.PLATFORM
-        );
     }
 
     @Test
-    void cancellationBeforePaymentIsASeparateWorkflowBranch() {
+    void cancellationFromPlacedStateProducesCancelledLifecycleState() {
         var orderId = placeOrder();
 
         var cancelled = workflow.recordCancellation(orderId);
 
+        assertThat(cancelled.status()).isEqualTo("CANCELLED");
         assertThat(actions(cancelled)).containsExactly(
                 OrderWorkflowAction.ORDER_CANCELLED
-        );
-        assertThat(participants(cancelled)).containsExactly(
-                WorkflowParticipant.CUSTOMER
         );
     }
 
     @Test
-    void cancellationAfterRecordedPaymentCanExposeRefundRequirement() {
+    void cancellationAfterRecordedPaymentRemainsAPlacedToCancelledTransition() {
         var orderId = placeOrder();
 
-        workflow.recordPayment(orderId);
-        workflow.recordCancellation(orderId);
+        var paid = workflow.recordPayment(orderId);
+        var cancelled = workflow.recordCancellation(orderId);
         var refundRequested = workflow.recordRefundRequest(orderId);
+
+        assertThat(paid.status()).isEqualTo("PLACED");
+        assertThat(cancelled.status()).isEqualTo("CANCELLED");
+        assertThat(refundRequested.status()).isEqualTo("CANCELLED");
 
         assertThat(actions(refundRequested)).containsExactly(
                 OrderWorkflowAction.PAYMENT_RECORDED,
@@ -104,23 +108,22 @@ class OrderWorkflowDiscoveryTest {
     }
 
     @Test
-    void preStateMachineRecorderStillAllowsContradictoryAndOutOfOrderMilestones() {
+    void p05PreparationBeforeAcceptanceFragilityIsNowRejected() {
         var orderId = placeOrder();
 
-        workflow.recordPreparationStarted(orderId);
-        workflow.recordRestaurantAcceptance(orderId);
-        workflow.recordRestaurantRejection(orderId);
-        var completed = workflow.recordCompletion(orderId);
+        assertThatThrownBy(() -> workflow.recordPreparationStarted(orderId))
+                .isInstanceOf(IllegalOrderTransitionException.class)
+                .satisfies(error -> {
+                    var transitionError = (IllegalOrderTransitionException) error;
+                    assertThat(transitionError.currentStatus().name()).isEqualTo("PLACED");
+                    assertThat(transitionError.attemptedTransition())
+                            .isEqualTo(OrderLifecycleTransition.START_PREPARATION);
+                });
 
-        assertThat(actions(completed)).containsExactly(
-                OrderWorkflowAction.PREPARATION_STARTED,
-                OrderWorkflowAction.RESTAURANT_ACCEPTED,
-                OrderWorkflowAction.RESTAURANT_REJECTED,
-                OrderWorkflowAction.ORDER_COMPLETED
-        );
+        var current = repository.findCurrentById(orderId).orElseThrow();
 
-        // This PASS is evidence of a missing state-machine guard, not a business guarantee.
-        assertThat(completed.status()).isEqualTo("PLACED");
+        assertThat(current.status().name()).isEqualTo("PLACED");
+        assertThat(current.workflowOccurrences()).isEmpty();
     }
 
     private OrderId placeOrder() {

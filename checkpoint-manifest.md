@@ -1,98 +1,94 @@
-# Checkpoint Manifest — C1.1-P05
+# Checkpoint Manifest — C1.1-P06 Candidate
 
 ## Identity
 
-- Checkpoint: C1.1-P05
-- Current status: VERIFIED AND FROZEN
-- Inherited checkpoint: C1.1-P04
-- Inherited branch: checkpoints/C1.1-P04
-- Inherited commit: dfcea735542790ea4b424abdc6ae2f2dcde4a796
-- P05 implementation commit: fa37c3b0cff91e3812cc0d6fa10373c9d46a9daf
-- P05 verification run: 37738287058
+- Target checkpoint: C1.1-P06
+- Current status: CANDIDATE — NOT FROZEN
+- Inherited checkpoint: C1.1-P05
+- Inherited branch: checkpoints/C1.1-P05
+- Inherited commit: 2e63f12ea30fc211b6a5450654536415aaaa164d
 
 ## Engineering question
 
-What actually happens from placement to a business outcome, including alternative paths, handoffs, cancellation, refund, preparation and completion?
+Which lifecycle transitions are valid, and which must be impossible?
 
 ## Prediction
 
-A permissive workflow recorder can make end-to-end paths executable while preserving the distinction workflow != state machine and creating evidence for P06 transition legality.
+A small explicit lifecycle model derived from P05 can preserve legitimate workflow branches while rejecting the contradictory ordering P05 intentionally allowed.
+
+## Lifecycle states
+
+- PLACED
+- ACCEPTED
+- REJECTED
+- CANCELLED
+- PREPARING
+- COMPLETED
+
+## Legal transitions introduced
+
+- PLACED → ACCEPTED
+- PLACED → REJECTED
+- PLACED → CANCELLED
+- ACCEPTED → PREPARING
+- PREPARING → COMPLETED
+
+Payment and refund remain orthogonal workflow milestones.
 
 ## Source evolution
 
-- added workflow participant/action/occurrence model;
-- evolved Order to record post-placement workflow occurrences;
-- added OrderWorkflowUseCase;
-- added OrderWorkflowService;
-- evolved OrderSnapshot to expose workflow trace;
-- wired workflow service into the Spring application.
+- expanded OrderStatus;
+- added OrderLifecycleTransition;
+- added IllegalOrderTransitionException;
+- evolved Order lifecycle methods to transition through explicit source/target rules;
+- retained immutable Order evolution and workflow trace;
+- retained OrderWorkflowService as the application coordinator.
 
-## Executable scenarios
+## Test evolution
 
-Verified:
-- happy path;
-- restaurant rejection after recorded payment with refund-request handoff;
-- cancellation before payment;
-- cancellation after payment with refund-request handoff;
-- contradictory/out-of-order sequence demonstrating missing transition guards;
-- Spring integration proving workflow updates the same current Order.
-
-## Verification
-
-GitHub Actions executed:
-
-mvn -B -ntp verify
-
-Observed:
-
-Tests run: 21, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
-
-All inherited P01-P04 tests remained green.
+- added OrderStateMachineTest;
+- evolved P05 workflow tests to assert real lifecycle state;
+- evolved Spring workflow integration to end at COMPLETED;
+- converted the P05 contradictory scenario into an illegal-transition regression.
 
 ## Architectural interpretation
 
-This part records workflow milestones, not final lifecycle state.
-
-Order.status intentionally remains PLACED.
+P06 introduces lifecycle legality, not a generic workflow engine.
 
 The project still contains no:
+- state-machine framework;
 - PostgreSQL;
 - Kafka;
 - Redis;
 - Saga;
 - Outbox;
-- CQRS;
 - Event Sourcing;
-- state-machine library;
 - optimistic locking;
-- service decomposition.
+- distributed lock;
+- service split.
 
-## Evidence-qualified guarantees
+## Evidence status
 
-Within the tested one-process learning model:
-- selected workflow branches are reproducible;
-- participant handoffs are explicit;
-- current workflow progress is observable;
-- suspicious sequencing is not currently rejected.
-
-Not guaranteed:
-- business validity of every recorded sequence;
-- external payment/refund effects;
-- transition legality;
-- durability;
-- concurrency correctness;
-- duplicate safety.
+Pending P06 CI.
 
 ## Fragilities intentionally preserved
 
-- restaurant acceptance and rejection can both appear;
-- preparation can be recorded before acceptance;
-- completion has no formal prerequisites;
-- current status remains PLACED;
-- payment/refund are local representations only;
-- current state remains transient.
+- no contextual guard beyond source state;
+- no cancellation-after-acceptance policy;
+- no explicit terminal/reversal semantics;
+- no concurrency protection;
+- no duplicate-command behavior;
+- no durability.
 
 ## Next pressure
 
-Part 1.1.6 must derive explicit lifecycle states and legal/illegal transitions from the P05 workflow evidence rather than inventing them independently.
+Part 1.1.7 must deepen guards, preconditions and postconditions: state source is necessary but may not be sufficient for deciding whether an operation is valid.
+
+## Freeze gate
+
+1. mvn -B -ntp verify succeeds;
+2. inherited behavior remains green where still semantically valid;
+3. legal transition tests pass;
+4. illegal transition tests pass;
+5. illegal attempts leave current state unchanged;
+6. P05 contradiction is closed by executable evidence.

@@ -1,5 +1,10 @@
 package com.acme.foodordering.domain.order;
 
 public enum OrderStatus {
-    PLACED
+    PLACED,
+    ACCEPTED,
+    REJECTED,
+    CANCELLED,
+    PREPARING,
+    COMPLETED
 }

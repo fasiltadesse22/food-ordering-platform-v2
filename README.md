@@ -1,43 +1,39 @@
 # Food Ordering Platform — V8.0 Fresh-Start Evolution
 
-Current verified checkpoint: C1.1-P05 — End-to-End Workflow Discovery
-Previous checkpoint: checkpoints/C1.1-P04
+Inherited verified checkpoint: C1.1-P05
+Current evolution: C1.1-P06 candidate — State Machines and Legal/Illegal Transitions
 
 ## Verification
 
 mvn -B -ntp verify
 
-P05 implementation verification:
+P06 is not frozen until GitHub Actions verifies the exact candidate.
 
-Tests run: 21, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
+## Current Order lifecycle
 
-## Current workflow model
+PLACED
+  → ACCEPTED → PREPARING → COMPLETED
+  → REJECTED
+  → CANCELLED
 
-The project records selected in-process workflow milestones for:
-- payment;
-- restaurant acceptance/rejection;
-- cancellation;
-- refund request;
-- preparation;
-- completion.
+Payment/refund remain workflow milestones rather than OrderStatus values.
 
-The recorder is intentionally permissive.
+## Important boundary
 
-Order.status remains PLACED because P05 is workflow discovery, not the lifecycle state machine.
+P06 enforces source-state legality only.
 
-## Important boundaries
-
-- PAYMENT_RECORDED is a local learning-stage milestone, not a real external charge.
-- REFUND_REQUESTED is not REFUND_COMPLETED.
-- workflow occurrence list is not Event Sourcing.
-- participant handoffs do not imply service/network boundaries.
-- contradictory sequences currently remaining executable is evidence of missing lifecycle guards.
+It does not yet fully define:
+- contextual guards/preconditions;
+- terminality;
+- reversibility/compensation;
+- concurrency/stale-state behavior;
+- repeated-command semantics.
 
 ## Current topology
 
 - one Java 21 / Spring Boot deployable;
 - in-memory current-state repository;
+- no state-machine framework;
 - no database;
 - no messaging;
 - no Saga;

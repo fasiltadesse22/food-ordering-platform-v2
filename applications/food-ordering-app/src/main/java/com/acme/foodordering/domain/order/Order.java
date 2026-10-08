@@ -62,13 +62,11 @@ public final class Order {
     }
 
     /**
-     * Records that payment was represented as completed in the P05 workflow.
-     *
-     * This is not an external provider call and does not enforce lifecycle
-     * legality. P05 intentionally preserves that weakness for P06.
+     * Payment is intentionally modeled as an orthogonal workflow milestone in P06.
+     * It does not change OrderStatus.
      */
     public Order recordPayment(Instant occurredAt) {
-        return record(
+        return recordMilestone(
                 OrderWorkflowAction.PAYMENT_RECORDED,
                 WorkflowParticipant.PAYMENT_PARTICIPANT,
                 occurredAt
@@ -76,31 +74,23 @@ public final class Order {
     }
 
     public Order recordRestaurantAcceptance(Instant occurredAt) {
-        return record(
-                OrderWorkflowAction.RESTAURANT_ACCEPTED,
-                WorkflowParticipant.RESTAURANT_OPERATOR,
-                occurredAt
-        );
+        return transition(OrderLifecycleTransition.ACCEPT, occurredAt);
     }
 
     public Order recordRestaurantRejection(Instant occurredAt) {
-        return record(
-                OrderWorkflowAction.RESTAURANT_REJECTED,
-                WorkflowParticipant.RESTAURANT_OPERATOR,
-                occurredAt
-        );
+        return transition(OrderLifecycleTransition.REJECT, occurredAt);
     }
 
     public Order recordCancellation(Instant occurredAt) {
-        return record(
-                OrderWorkflowAction.ORDER_CANCELLED,
-                WorkflowParticipant.CUSTOMER,
-                occurredAt
-        );
+        return transition(OrderLifecycleTransition.CANCEL, occurredAt);
     }
 
+    /**
+     * Refund request remains an orthogonal workflow milestone. P07/P08 will
+     * deepen the conditions and compensation semantics.
+     */
     public Order recordRefundRequest(Instant occurredAt) {
-        return record(
+        return recordMilestone(
                 OrderWorkflowAction.REFUND_REQUESTED,
                 WorkflowParticipant.PLATFORM,
                 occurredAt
@@ -108,22 +98,39 @@ public final class Order {
     }
 
     public Order recordPreparationStarted(Instant occurredAt) {
-        return record(
-                OrderWorkflowAction.PREPARATION_STARTED,
-                WorkflowParticipant.RESTAURANT_OPERATOR,
-                occurredAt
-        );
+        return transition(OrderLifecycleTransition.START_PREPARATION, occurredAt);
     }
 
     public Order recordCompletion(Instant occurredAt) {
-        return record(
-                OrderWorkflowAction.ORDER_COMPLETED,
-                WorkflowParticipant.RESTAURANT_OPERATOR,
+        return transition(OrderLifecycleTransition.COMPLETE, occurredAt);
+    }
+
+    private Order transition(
+            OrderLifecycleTransition transition,
+            Instant occurredAt
+    ) {
+        if (status != transition.source()) {
+            throw new IllegalOrderTransitionException(id, status, transition);
+        }
+
+        return evolve(
+                transition.target(),
+                transition.workflowAction(),
+                transition.participant(),
                 occurredAt
         );
     }
 
-    private Order record(
+    private Order recordMilestone(
+            OrderWorkflowAction action,
+            WorkflowParticipant participant,
+            Instant occurredAt
+    ) {
+        return evolve(status, action, participant, occurredAt);
+    }
+
+    private Order evolve(
+            OrderStatus nextStatus,
             OrderWorkflowAction action,
             WorkflowParticipant participant,
             Instant occurredAt
@@ -136,7 +143,7 @@ public final class Order {
                 customerId,
                 restaurantId,
                 lines,
-                status,
+                nextStatus,
                 placedAt,
                 updated
         );

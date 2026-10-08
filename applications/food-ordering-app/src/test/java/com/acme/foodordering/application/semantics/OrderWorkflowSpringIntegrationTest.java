@@ -29,7 +29,7 @@ class OrderWorkflowSpringIntegrationTest {
     GetOrderUseCase getOrder;
 
     @Test
-    void workflowMilestonesEvolveTheSameCurrentOrderInsideTheRunningApplication() {
+    void workflowMilestonesEvolveTheSameCurrentOrderThroughLegalLifecycleTransitions() {
         var placed = placeOrder.place(new PlaceOrderCommand(
                 "customer-workflow",
                 "restaurant-workflow",
@@ -60,6 +60,6 @@ class OrderWorkflowSpringIntegrationTest {
                         OrderWorkflowAction.ORDER_COMPLETED
                 );
 
-        assertThat(observed.status()).isEqualTo("PLACED");
+        assertThat(observed.status()).isEqualTo("COMPLETED");
     }
 }
