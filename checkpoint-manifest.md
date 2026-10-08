@@ -1,94 +1,55 @@
-# Checkpoint Manifest — C1.1-P08
+# Checkpoint Manifest — C1.1-P09 Candidate
 
 ## Identity
 
-- Checkpoint: C1.1-P08
-- Current status: VERIFIED AND FROZEN
-- Inherited checkpoint: C1.1-P07
-- Inherited branch: checkpoints/C1.1-P07
-- Inherited commit: 6f4ca2c2d073575f6eaa831e0031d6f7205e124e
-- P08 implementation commit: 1deeb85e6e85ab4a5e848786d1cbc9c291fc77ba
-- P08 verification run: 37783525459
+- Target checkpoint: C1.1-P09
+- Current status: CANDIDATE — NOT FROZEN
+- Inherited checkpoint: C1.1-P08
+- Inherited branch: checkpoints/C1.1-P08
+- Inherited commit: c6e6d78f42e5e3c47125adaffa6f675e6207b54f
 
 ## Engineering question
 
-Which lifecycle outcomes can truly be undone, which cannot, and when must the business perform a new compensating action instead of pretending the original fact never occurred?
+When an operation does not produce the requested outcome, did the system correctly reject the business request, or did the system itself fail to execute correctly?
 
-## Verified terminal classification
+## Application semantics
 
-Terminal:
-- REJECTED
-- CANCELLED
-- COMPLETED
+Expected business outcomes:
+- Accepted(OrderSnapshot)
+- Rejected(OrderActionRejection)
 
-Nonterminal:
-- PLACED
-- ACCEPTED
-- PREPARING
+Known expected domain violations are translated to Rejected.
 
-## Verified compensation semantics
+Technical runtime/infrastructure failures are not translated into business rejection.
 
-- PAYMENT_RECORDED is retained as historical truth;
-- REFUND_REQUESTED is a later compensating workflow occurrence;
-- eligible refund request does not change terminal OrderStatus;
-- second semantic refund request is rejected.
+## HTTP evidence target
 
-## Verified modification semantics
+- valid cancel -> 200
+- repeat cancel -> 409 / ILLEGAL_TRANSITION
+- wrong customer -> 403 / CUSTOMER_DOES_NOT_OWN_ORDER
+- unknown order -> 404 / ORDER_NOT_FOUND
+- unexpected runtime/programming failure -> 500
 
-- real ModifyOrderUseCase exists;
-- owning customer can modify while PLACED;
-- modification keeps lifecycle PLACED and appends ORDER_MODIFIED;
-- terminal Orders cannot be modified;
-- failed terminal modification leaves repository authority unchanged.
+## Mechanisms deliberately absent
 
-## Important preserved fragility
-
-A paid Order remains PLACED and can therefore still be modified.
-
-P08 intentionally does not solve modification-after-payment.
-
-## Verification
-
-GitHub Actions executed:
-
-mvn -B -ntp verify
-
-Observed:
-
-Tests run: 44, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
-
-## Architectural interpretation
-
-P08 models local lifecycle terminality and compensation semantics.
-
-It does not introduce:
-- Saga;
-- rollback coordinator;
-- external refund provider;
-- Event Sourcing;
+- retry;
+- backoff;
+- circuit breaker;
+- fallback;
 - PostgreSQL;
 - Kafka;
 - Redis;
-- optimistic locking;
-- distributed lock.
+- distributed failure handling.
 
-## Evidence-qualified guarantees
+## Evidence status
 
-Within the tested one-process model:
-- selected terminal states are explicit;
-- completed/cancelled terminal restrictions are enforced;
-- compensation history is additive;
-- first refund request is preserved when a second is rejected;
-- PLACED modification works.
+Pending P09 CI.
 
-Not guaranteed:
-- external financial effects;
-- distributed compensation;
-- retry idempotency;
-- durability;
-- concurrency/stale-state correctness.
+## Freeze gate
 
-## Next pressure
-
-Part 1.1.9 must distinguish business failure from technical failure and evolve failure semantics without collapsing expected business rejection into infrastructure error.
+1. root Maven verification succeeds;
+2. inherited P01-P08 behavior remains green under the explicit result contract;
+3. known business violations return Rejected rather than technical failure;
+4. repository read/write failure propagates as technical failure;
+5. HTTP business rejection mappings execute as expected;
+6. unexpected runtime failure maps to 500 rather than 400.

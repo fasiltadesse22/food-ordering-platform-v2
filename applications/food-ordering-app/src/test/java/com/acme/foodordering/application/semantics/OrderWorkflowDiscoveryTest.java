@@ -1,15 +1,15 @@
 package com.acme.foodordering.application.semantics;
 
 import com.acme.foodordering.adapter.out.inmemory.InMemoryOrderRepository;
+import com.acme.foodordering.application.port.in.OrderActionRejection;
+import com.acme.foodordering.application.port.in.OrderActionResult;
 import com.acme.foodordering.application.port.in.PlaceOrderCommand;
 import com.acme.foodordering.application.port.in.PlaceOrderResult;
 import com.acme.foodordering.application.service.OrderSnapshot;
 import com.acme.foodordering.application.service.OrderWorkflowService;
 import com.acme.foodordering.application.service.PlaceOrderService;
 import com.acme.foodordering.domain.order.CustomerId;
-import com.acme.foodordering.domain.order.IllegalOrderTransitionException;
 import com.acme.foodordering.domain.order.OrderId;
-import com.acme.foodordering.domain.order.OrderLifecycleTransition;
 import com.acme.foodordering.domain.order.RestaurantId;
 import com.acme.foodordering.domain.order.workflow.OrderWorkflowAction;
 import com.acme.foodordering.domain.order.workflow.WorkflowParticipant;
@@ -22,7 +22,6 @@ import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class OrderWorkflowDiscoveryTest {
 
@@ -30,7 +29,10 @@ class OrderWorkflowDiscoveryTest {
     private static final RestaurantId RESTAURANT = new RestaurantId("restaurant-1");
 
     private final InMemoryOrderRepository repository = new InMemoryOrderRepository();
-    private final Clock clock = Clock.fixed(Instant.parse("2026-10-08T06:00:00Z"), ZoneOffset.UTC);
+    private final Clock clock = Clock.fixed(
+            Instant.parse("2026-10-08T06:00:00Z"),
+            ZoneOffset.UTC
+    );
     private final PlaceOrderService placeOrder = new PlaceOrderService(repository, clock);
     private final OrderWorkflowService workflow = new OrderWorkflowService(repository, clock);
 
@@ -38,10 +40,10 @@ class OrderWorkflowDiscoveryTest {
     void happyPathPreservesWorkflowAndLifecycleState() {
         var orderId = placeOrder();
 
-        var paid = workflow.recordPayment(orderId);
-        var accepted = workflow.recordRestaurantAcceptance(orderId, RESTAURANT);
-        var preparing = workflow.recordPreparationStarted(orderId, RESTAURANT);
-        var completed = workflow.recordCompletion(orderId, RESTAURANT);
+        var paid = accepted(workflow.recordPayment(orderId));
+        var accepted = accepted(workflow.recordRestaurantAcceptance(orderId, RESTAURANT));
+        var preparing = accepted(workflow.recordPreparationStarted(orderId, RESTAURANT));
+        var completed = accepted(workflow.recordCompletion(orderId, RESTAURANT));
 
         assertThat(paid.status()).isEqualTo("PLACED");
         assertThat(accepted.status()).isEqualTo("ACCEPTED");
@@ -67,9 +69,9 @@ class OrderWorkflowDiscoveryTest {
     void restaurantRejectionAfterPaymentAllowsRefundRequest() {
         var orderId = placeOrder();
 
-        workflow.recordPayment(orderId);
-        var rejected = workflow.recordRestaurantRejection(orderId, RESTAURANT);
-        var refundRequested = workflow.recordRefundRequest(orderId);
+        accepted(workflow.recordPayment(orderId));
+        var rejected = accepted(workflow.recordRestaurantRejection(orderId, RESTAURANT));
+        var refundRequested = accepted(workflow.recordRefundRequest(orderId));
 
         assertThat(rejected.status()).isEqualTo("REJECTED");
         assertThat(refundRequested.status()).isEqualTo("REJECTED");
@@ -85,7 +87,7 @@ class OrderWorkflowDiscoveryTest {
     void cancellationFromPlacedStateProducesCancelledLifecycleState() {
         var orderId = placeOrder();
 
-        var cancelled = workflow.recordCancellation(orderId, CUSTOMER);
+        var cancelled = accepted(workflow.recordCancellation(orderId, CUSTOMER));
 
         assertThat(cancelled.status()).isEqualTo("CANCELLED");
         assertThat(actions(cancelled)).containsExactly(
@@ -97,9 +99,9 @@ class OrderWorkflowDiscoveryTest {
     void cancellationAfterPaymentAllowsRefundRequest() {
         var orderId = placeOrder();
 
-        var paid = workflow.recordPayment(orderId);
-        var cancelled = workflow.recordCancellation(orderId, CUSTOMER);
-        var refundRequested = workflow.recordRefundRequest(orderId);
+        var paid = accepted(workflow.recordPayment(orderId));
+        var cancelled = accepted(workflow.recordCancellation(orderId, CUSTOMER));
+        var refundRequested = accepted(workflow.recordRefundRequest(orderId));
 
         assertThat(paid.status()).isEqualTo("PLACED");
         assertThat(cancelled.status()).isEqualTo("CANCELLED");
@@ -113,20 +115,17 @@ class OrderWorkflowDiscoveryTest {
     }
 
     @Test
-    void preparationBeforeAcceptanceRemainsRejected() {
+    void preparationBeforeAcceptanceIsBusinessRejectionAtApplicationBoundary() {
         var orderId = placeOrder();
 
-        assertThatThrownBy(() -> workflow.recordPreparationStarted(orderId, RESTAURANT))
-                .isInstanceOf(IllegalOrderTransitionException.class)
-                .satisfies(error -> {
-                    var transitionError = (IllegalOrderTransitionException) error;
-                    assertThat(transitionError.currentStatus().name()).isEqualTo("PLACED");
-                    assertThat(transitionError.attemptedTransition())
-                            .isEqualTo(OrderLifecycleTransition.START_PREPARATION);
-                });
+        var result = workflow.recordPreparationStarted(orderId, RESTAURANT);
+
+        assertThat(result).isInstanceOf(OrderActionResult.Rejected.class);
+        var rejection = ((OrderActionResult.Rejected) result).rejection();
+        assertThat(rejection.code())
+                .isEqualTo(OrderActionRejection.Code.ILLEGAL_TRANSITION);
 
         var current = repository.findCurrentById(orderId).orElseThrow();
-
         assertThat(current.status().name()).isEqualTo("PLACED");
         assertThat(current.workflowOccurrences()).isEmpty();
     }
@@ -145,6 +144,11 @@ class OrderWorkflowDiscoveryTest {
 
         assertThat(result).isInstanceOf(PlaceOrderResult.Accepted.class);
         return ((PlaceOrderResult.Accepted) result).order().id();
+    }
+
+    private static OrderSnapshot accepted(OrderActionResult result) {
+        assertThat(result).isInstanceOf(OrderActionResult.Accepted.class);
+        return ((OrderActionResult.Accepted) result).order();
     }
 
     private static List<OrderWorkflowAction> actions(OrderSnapshot snapshot) {

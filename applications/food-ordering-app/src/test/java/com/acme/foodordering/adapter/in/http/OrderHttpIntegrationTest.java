@@ -7,8 +7,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.blankOrNullString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -24,29 +24,7 @@ class OrderHttpIntegrationTest {
 
     @Test
     void placesAndReadsAnOrderThroughHttp() throws Exception {
-        var mvcResult = mockMvc.perform(post("/orders")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "customerId": "customer-1",
-                                  "restaurantId": "restaurant-1",
-                                  "lines": [
-                                    {
-                                      "menuItemId": "burger-1",
-                                      "name": "Classic Burger",
-                                      "quantity": 2,
-                                      "unitPrice": 5.50
-                                    }
-                                  ]
-                                }
-                                """))
-                .andExpect(status().isCreated())
-                .andExpect(header().string("Location", not(blankOrNullString())))
-                .andExpect(jsonPath("$.status").value("PLACED"))
-                .andExpect(jsonPath("$.total").value(11.0))
-                .andReturn();
-
-        var location = mvcResult.getResponse().getHeader("Location");
+        var location = placeOrder("customer-1");
 
         mockMvc.perform(get(location))
                 .andExpect(status().isOk())
@@ -61,11 +39,90 @@ class OrderHttpIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "customerId": "customer-1",
+                                  "customerId": "customer-empty",
                                   "restaurantId": "restaurant-1",
                                   "lines": []
                                 }
                                 """))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void validCancellationReturnsSuccessButRepeatedCancellationIsBusinessConflict() throws Exception {
+        var location = placeOrder("customer-cancel");
+        var orderId = location.substring("/orders/".length());
+
+        mockMvc.perform(post("/orders/{orderId}/cancel", orderId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"customerId":"customer-cancel"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
+
+        mockMvc.perform(post("/orders/{orderId}/cancel", orderId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"customerId":"customer-cancel"}
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ILLEGAL_TRANSITION"));
+    }
+
+    @Test
+    void wrongCustomerCancellationIsForbiddenBusinessRejection() throws Exception {
+        var location = placeOrder("customer-owner");
+        var orderId = location.substring("/orders/".length());
+
+        mockMvc.perform(post("/orders/{orderId}/cancel", orderId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"customerId":"customer-other"}
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code")
+                        .value("CUSTOMER_DOES_NOT_OWN_ORDER"));
+    }
+
+    @Test
+    void unknownOrderCancellationIsNotFoundBusinessRejection() throws Exception {
+        mockMvc.perform(post(
+                        "/orders/123e4567-e89b-12d3-a456-426614174099/cancel"
+                )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"customerId":"customer-1"}
+                                """))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("ORDER_NOT_FOUND"));
+    }
+
+    private String placeOrder(String customerId) throws Exception {
+        var mvcResult = mockMvc.perform(post("/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "customerId": "%s",
+                                  "restaurantId": "restaurant-1",
+                                  "lines": [
+                                    {
+                                      "menuItemId": "burger-1",
+                                      "name": "Classic Burger",
+                                      "quantity": 2,
+                                      "unitPrice": 5.50
+                                    }
+                                  ]
+                                }
+                                """.formatted(customerId)))
+                .andExpect(status().isCreated())
+                .andExpect(header().string(
+                        "Location",
+                        not(blankOrNullString())
+                ))
+                .andExpect(jsonPath("$.status").value("PLACED"))
+                .andExpect(jsonPath("$.total").value(11.0))
+                .andReturn();
+
+        return mvcResult.getResponse().getHeader("Location");
     }
 }

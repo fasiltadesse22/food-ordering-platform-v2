@@ -1,6 +1,7 @@
 package com.acme.foodordering.application.semantics;
 
 import com.acme.foodordering.application.port.in.GetOrderUseCase;
+import com.acme.foodordering.application.port.in.OrderActionResult;
 import com.acme.foodordering.application.port.in.OrderWorkflowUseCase;
 import com.acme.foodordering.application.port.in.PlaceOrderCommand;
 import com.acme.foodordering.application.port.in.PlaceOrderResult;
@@ -30,7 +31,7 @@ class OrderWorkflowSpringIntegrationTest {
     GetOrderUseCase getOrder;
 
     @Test
-    void workflowMilestonesEvolveTheSameCurrentOrderThroughGuardedLifecycleTransitions() {
+    void workflowMilestonesEvolveTheSameCurrentOrderThroughApplicationResults() {
         var placed = placeOrder.place(new PlaceOrderCommand(
                 "customer-workflow",
                 "restaurant-workflow",
@@ -46,10 +47,10 @@ class OrderWorkflowSpringIntegrationTest {
         var orderId = ((PlaceOrderResult.Accepted) placed).order().id();
         var restaurantId = new RestaurantId("restaurant-workflow");
 
-        workflow.recordPayment(orderId);
-        workflow.recordRestaurantAcceptance(orderId, restaurantId);
-        workflow.recordPreparationStarted(orderId, restaurantId);
-        workflow.recordCompletion(orderId, restaurantId);
+        assertAccepted(workflow.recordPayment(orderId));
+        assertAccepted(workflow.recordRestaurantAcceptance(orderId, restaurantId));
+        assertAccepted(workflow.recordPreparationStarted(orderId, restaurantId));
+        assertAccepted(workflow.recordCompletion(orderId, restaurantId));
 
         var observed = getOrder.get(orderId);
 
@@ -63,5 +64,9 @@ class OrderWorkflowSpringIntegrationTest {
                 );
 
         assertThat(observed.status()).isEqualTo("COMPLETED");
+    }
+
+    private static void assertAccepted(OrderActionResult result) {
+        assertThat(result).isInstanceOf(OrderActionResult.Accepted.class);
     }
 }

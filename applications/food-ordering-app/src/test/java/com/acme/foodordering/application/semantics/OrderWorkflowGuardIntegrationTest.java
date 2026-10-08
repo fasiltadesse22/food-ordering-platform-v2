@@ -1,11 +1,12 @@
 package com.acme.foodordering.application.semantics;
 
 import com.acme.foodordering.adapter.out.inmemory.InMemoryOrderRepository;
+import com.acme.foodordering.application.port.in.OrderActionRejection;
+import com.acme.foodordering.application.port.in.OrderActionResult;
 import com.acme.foodordering.application.port.in.PlaceOrderCommand;
 import com.acme.foodordering.application.port.in.PlaceOrderResult;
 import com.acme.foodordering.application.service.OrderWorkflowService;
 import com.acme.foodordering.application.service.PlaceOrderService;
-import com.acme.foodordering.domain.order.OrderGuardViolationException;
 import com.acme.foodordering.domain.order.RestaurantId;
 import org.junit.jupiter.api.Test;
 
@@ -16,12 +17,11 @@ import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class OrderWorkflowGuardIntegrationTest {
 
     @Test
-    void guardFailureDoesNotReplaceAuthoritativeRepositoryState() {
+    void guardFailureBecomesBusinessRejectionAndDoesNotReplaceRepositoryState() {
         var repository = new InMemoryOrderRepository();
         var clock = Clock.fixed(
                 Instant.parse("2026-10-08T08:45:00Z"),
@@ -45,11 +45,16 @@ class OrderWorkflowGuardIntegrationTest {
         var orderId = ((PlaceOrderResult.Accepted) placedResult).order().id();
         var before = repository.findCurrentById(orderId).orElseThrow();
 
-        assertThatThrownBy(() -> workflow.recordRestaurantAcceptance(
+        var result = workflow.recordRestaurantAcceptance(
                 orderId,
                 new RestaurantId("restaurant-2")
-        ))
-                .isInstanceOf(OrderGuardViolationException.class);
+        );
+
+        assertThat(result).isInstanceOf(OrderActionResult.Rejected.class);
+        assertThat(((OrderActionResult.Rejected) result).rejection().code())
+                .isEqualTo(
+                        OrderActionRejection.Code.RESTAURANT_DOES_NOT_OWN_ORDER
+                );
 
         var after = repository.findCurrentById(orderId).orElseThrow();
 

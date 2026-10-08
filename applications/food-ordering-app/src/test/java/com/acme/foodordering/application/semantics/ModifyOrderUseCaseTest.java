@@ -2,12 +2,13 @@ package com.acme.foodordering.application.semantics;
 
 import com.acme.foodordering.adapter.out.inmemory.InMemoryOrderRepository;
 import com.acme.foodordering.application.port.in.ModifyOrderCommand;
+import com.acme.foodordering.application.port.in.OrderActionRejection;
+import com.acme.foodordering.application.port.in.OrderActionResult;
 import com.acme.foodordering.application.port.in.PlaceOrderCommand;
 import com.acme.foodordering.application.port.in.PlaceOrderResult;
 import com.acme.foodordering.application.service.ModifyOrderService;
 import com.acme.foodordering.application.service.PlaceOrderService;
 import com.acme.foodordering.domain.order.CustomerId;
-import com.acme.foodordering.domain.order.OrderGuardViolationException;
 import com.acme.foodordering.domain.order.workflow.OrderWorkflowAction;
 import org.junit.jupiter.api.Test;
 
@@ -18,7 +19,6 @@ import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ModifyOrderUseCaseTest {
 
@@ -31,10 +31,10 @@ class ModifyOrderUseCaseTest {
     private final ModifyOrderService modifyOrder = new ModifyOrderService(repository, clock);
 
     @Test
-    void modifyingPlacedOrderUpdatesCurrentRepresentationAndAppendsModificationOccurrence() {
+    void modifyingPlacedOrderReturnsAcceptedAndUpdatesCurrentRepresentation() {
         var orderId = place();
 
-        var modified = modifyOrder.modify(new ModifyOrderCommand(
+        var result = modifyOrder.modify(new ModifyOrderCommand(
                 orderId,
                 new CustomerId("customer-1"),
                 List.of(new ModifyOrderCommand.Line(
@@ -44,6 +44,9 @@ class ModifyOrderUseCaseTest {
                         new BigDecimal("7.00")
                 ))
         ));
+
+        assertThat(result).isInstanceOf(OrderActionResult.Accepted.class);
+        var modified = ((OrderActionResult.Accepted) result).order();
 
         assertThat(modified.status()).isEqualTo("PLACED");
         assertThat(modified.total()).isEqualByComparingTo("14.00");
@@ -56,7 +59,7 @@ class ModifyOrderUseCaseTest {
     }
 
     @Test
-    void terminalOrderModificationFailureDoesNotReplaceRepositoryAuthority() {
+    void terminalModificationReturnsBusinessRejectionAndPreservesAuthority() {
         var orderId = place();
         var current = repository.findCurrentById(orderId).orElseThrow();
         repository.saveCurrent(current.recordCancellation(
@@ -65,7 +68,7 @@ class ModifyOrderUseCaseTest {
         ));
         var before = repository.findCurrentById(orderId).orElseThrow();
 
-        assertThatThrownBy(() -> modifyOrder.modify(new ModifyOrderCommand(
+        var result = modifyOrder.modify(new ModifyOrderCommand(
                 orderId,
                 new CustomerId("customer-1"),
                 List.of(new ModifyOrderCommand.Line(
@@ -74,8 +77,13 @@ class ModifyOrderUseCaseTest {
                         1,
                         new BigDecimal("7.00")
                 ))
-        )))
-                .isInstanceOf(OrderGuardViolationException.class);
+        ));
+
+        assertThat(result).isInstanceOf(OrderActionResult.Rejected.class);
+        assertThat(((OrderActionResult.Rejected) result).rejection().code())
+                .isEqualTo(
+                        OrderActionRejection.Code.MODIFICATION_REQUIRES_PLACED_ORDER
+                );
 
         var after = repository.findCurrentById(orderId).orElseThrow();
         assertThat(after).isSameAs(before);

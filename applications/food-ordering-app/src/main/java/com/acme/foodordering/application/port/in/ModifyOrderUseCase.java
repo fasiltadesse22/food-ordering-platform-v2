@@ -1,7 +1,5 @@
 package com.acme.foodordering.application.port.in;
 
-import com.acme.foodordering.application.service.OrderSnapshot;
-
 public interface ModifyOrderUseCase {
-    OrderSnapshot modify(ModifyOrderCommand command);
+    OrderActionResult modify(ModifyOrderCommand command);
 }
