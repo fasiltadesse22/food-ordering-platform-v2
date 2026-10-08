@@ -4,53 +4,77 @@
 
 Can the project distinguish terminal lifecycle outcomes from later compensating workflow actions while preserving historical facts rather than pretending to roll them back?
 
-## Hypothesis
-
-If P08 semantics are correct:
-- REJECTED, CANCELLED and COMPLETED are explicitly terminal for OrderStatus;
-- refund after paid cancellation preserves PAYMENT_RECORDED and adds REFUND_REQUESTED;
-- second refund request is rejected without erasing the first;
-- completed Order cannot be cancelled;
-- terminal cancelled Order cannot be modified;
-- PLACED Order can be modified without changing lifecycle status.
-
-## Predictions
-
-1. OrderStatus terminal flags match the current lifecycle graph.
-2. PAYMENT_RECORDED → ORDER_CANCELLED → REFUND_REQUESTED remains fully visible.
-3. second refund request fails with REFUND_ALREADY_REQUESTED.
-4. CANCEL from COMPLETED fails as illegal transition.
-5. modification from CANCELLED fails.
-6. modification from PLACED succeeds and appends ORDER_MODIFIED.
-7. no Saga/distributed rollback mechanism is required for these local semantics.
-
-## Setup
-
-Executable tests:
-- OrderTerminalityAndCompensationTest
-- ModifyOrderUseCaseTest
-- all inherited tests.
-
 ## Execution
 
-Authoritative command:
+GitHub Actions run: 37783525459
+
+Command:
 
 mvn -B -ntp verify
 
 ## Observation
 
-Pending P08 CI.
+OrderTerminalityAndCompensationTest:
+- tests run: 6
+- failures: 0
+- errors: 0
+- skipped: 0
+
+ModifyOrderUseCaseTest:
+- tests run: 2
+- failures: 0
+- errors: 0
+- skipped: 0
+
+Whole reactor:
+- tests run: 44
+- failures: 0
+- errors: 0
+- skipped: 0
+- BUILD SUCCESS
+
+## Evidence
+
+Observed:
+- REJECTED, CANCELLED and COMPLETED are explicitly terminal for OrderStatus;
+- PLACED, ACCEPTED and PREPARING are nonterminal;
+- PAYMENT_RECORDED → ORDER_CANCELLED → REFUND_REQUESTED remains fully visible;
+- refund request does not change CANCELLED status;
+- second refund request is rejected with REFUND_ALREADY_REQUESTED;
+- COMPLETED cannot transition through CANCEL;
+- terminal CANCELLED Order cannot be modified;
+- PLACED Order can be modified, keeps PLACED status and appends ORDER_MODIFIED;
+- ModifyOrder application use case replaces repository current state only on successful modification;
+- failed terminal modification preserves repository authority.
+
+## Interpretation
+
+Terminality concerns Order lifecycle transitions.
+
+Compensation is a later action that may occur after terminality.
+
+Refund request preserves payment history rather than erasing it.
+
+No exact rollback of payment/preparation/completion history is modeled.
+
+## Important preserved fragility
+
+PAYMENT_RECORDED leaves OrderStatus PLACED.
+
+Therefore ModifyOrder remains possible after payment if the Order is still PLACED.
+
+P08 intentionally preserves this for later modification-after-payment/stale-decision work.
 
 ## Limitations
 
 The experiment does not prove:
-- a real payment was charged;
-- a real refund executed;
-- physical preparation actually occurred;
-- compensation is durable;
-- repeated refund retry is idempotent;
-- modification after payment is safe.
+- real payment execution;
+- real refund execution;
+- physical kitchen irreversibility;
+- distributed compensation;
+- idempotent refund retry;
+- durability.
 
 ## Conclusion
 
-Pending execution evidence.
+P08 successfully establishes local terminality and compensation semantics without introducing distributed rollback or Saga.

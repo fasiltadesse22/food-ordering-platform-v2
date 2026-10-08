@@ -1,13 +1,16 @@
 # Food Ordering Platform — V8.0 Fresh-Start Evolution
 
-Inherited verified checkpoint: C1.1-P07
-Current evolution: C1.1-P08 candidate — Terminal, Reversible and Irreversible Outcomes
+Current verified checkpoint: C1.1-P08 — Terminal, Reversible and Irreversible Outcomes
+Previous checkpoint: checkpoints/C1.1-P07
 
 ## Verification
 
 mvn -B -ntp verify
 
-P08 is not frozen until GitHub Actions verifies the exact candidate.
+P08 implementation verification:
+
+Tests run: 44, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
 
 ## Current lifecycle semantics
 
@@ -26,9 +29,11 @@ PAYMENT_RECORDED
 
 Refund request is a new action. It does not erase payment history and does not reopen the terminal Order.
 
+A second semantic refund request is rejected. Idempotent retry semantics are still deferred.
+
 ## Modification
 
-A real ModifyOrderUseCase now exists.
+A real ModifyOrderUseCase exists.
 
 Modification is allowed only while PLACED and by the owning customer.
 
