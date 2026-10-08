@@ -1,55 +1,80 @@
-# Checkpoint Manifest — C1.1-P09 Candidate
+# Checkpoint Manifest — C1.1-P09
 
 ## Identity
 
-- Target checkpoint: C1.1-P09
-- Current status: CANDIDATE — NOT FROZEN
+- Checkpoint: C1.1-P09
+- Current status: VERIFIED AND FROZEN
 - Inherited checkpoint: C1.1-P08
 - Inherited branch: checkpoints/C1.1-P08
 - Inherited commit: c6e6d78f42e5e3c47125adaffa6f675e6207b54f
+- P09 implementation commit: b232967485ee78f1cba56c26ca4b864dc07d10ea
+- P09 verification run: 37785102920
 
 ## Engineering question
 
 When an operation does not produce the requested outcome, did the system correctly reject the business request, or did the system itself fail to execute correctly?
 
-## Application semantics
+## Verified application semantics
 
 Expected business outcomes:
 - Accepted(OrderSnapshot)
 - Rejected(OrderActionRejection)
 
-Known expected domain violations are translated to Rejected.
+Verified rejection examples:
+- ILLEGAL_TRANSITION
+- CUSTOMER_DOES_NOT_OWN_ORDER
+- ORDER_NOT_FOUND
 
-Technical runtime/infrastructure failures are not translated into business rejection.
+Technical repository failures are not translated into Rejected.
 
-## HTTP evidence target
+## Verified HTTP semantics
 
-- valid cancel -> 200
-- repeat cancel -> 409 / ILLEGAL_TRANSITION
+- accepted cancel -> 200
+- repeated cancel -> 409 / ILLEGAL_TRANSITION
 - wrong customer -> 403 / CUSTOMER_DOES_NOT_OWN_ORDER
-- unknown order -> 404 / ORDER_NOT_FOUND
-- unexpected runtime/programming failure -> 500
+- unknown Order -> 404 / ORDER_NOT_FOUND
+- unexpected programming/runtime failure -> 500
 
-## Mechanisms deliberately absent
+NullPointerException is no longer classified as a 400 request error.
 
-- retry;
-- backoff;
+## Verification
+
+GitHub Actions executed:
+
+mvn -B -ntp verify
+
+Observed:
+
+Tests run: 53, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+
+## Architectural interpretation
+
+P09 classifies failure before resilience mechanisms are introduced.
+
+The project still contains no:
+- retry/backoff;
+- timeout policy;
 - circuit breaker;
 - fallback;
 - PostgreSQL;
 - Kafka;
 - Redis;
-- distributed failure handling.
+- distributed failure coordination.
 
-## Evidence status
+## Evidence-qualified guarantees
 
-Pending P09 CI.
+Within the tested one-process model:
+- known expected domain rejection becomes an explicit application rejection;
+- selected repository mechanism failures remain technical;
+- selected HTTP adapter mappings preserve that distinction.
 
-## Freeze gate
+Not guaranteed:
+- technical failure retryability;
+- remote dependency behavior;
+- durable persistence;
+- platform-wide failure observability.
 
-1. root Maven verification succeeds;
-2. inherited P01-P08 behavior remains green under the explicit result contract;
-3. known business violations return Rejected rather than technical failure;
-4. repository read/write failure propagates as technical failure;
-5. HTTP business rejection mappings execute as expected;
-6. unexpected runtime failure maps to 500 rather than 400.
+## Next pressure
+
+Part 1.1.10 must distinguish business invariants, validation rules and database constraints and make the correctness rules explicit independently of their enforcement mechanism.

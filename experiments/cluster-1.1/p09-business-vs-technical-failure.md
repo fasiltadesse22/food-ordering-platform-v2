@@ -4,50 +4,75 @@
 
 Can the application and HTTP boundaries distinguish a correctly rejected business operation from a failure of the execution mechanism?
 
-## Hypothesis
-
-If P09 semantics are correct:
-
-1. illegal lifecycle request returns OrderActionResult.Rejected rather than escaping as an application failure;
-2. ownership violation returns Rejected;
-3. unknown Order returns Rejected(ORDER_NOT_FOUND);
-4. repository read/write failures propagate as technical exceptions and are not converted to Rejected;
-5. HTTP repeated cancellation returns 409 with ILLEGAL_TRANSITION;
-6. HTTP wrong-owner cancellation returns 403;
-7. HTTP unknown Order cancellation returns 404;
-8. unexpected programming/runtime failure maps to 500, not 400.
-
-## Controlled variables
-
-Business-rejection tests keep repository mechanism healthy and vary business state/context.
-
-Technical-failure tests keep the requested business action valid while replacing repository behavior with deterministic read/write failure.
-
-This isolates:
-- business decision failure;
-from
-- mechanism execution failure.
-
 ## Execution
 
-Authoritative command:
+GitHub Actions run: 37785102920
+
+Command:
 
 mvn -B -ntp verify
 
 ## Observation
 
-Pending P09 CI.
+OrderActionFailureSemanticsTest:
+- tests run: 5
+- failures: 0
+- errors: 0
+- skipped: 0
+
+ApiExceptionHandlerTest:
+- tests run: 1
+- failures: 0
+- errors: 0
+- skipped: 0
+
+OrderHttpIntegrationTest:
+- tests run: 5
+- failures: 0
+- errors: 0
+- skipped: 0
+
+Whole reactor:
+- tests run: 53
+- failures: 0
+- errors: 0
+- skipped: 0
+- BUILD SUCCESS
+
+## Evidence
+
+Observed application behavior:
+- illegal lifecycle request returns Rejected(ILLEGAL_TRANSITION);
+- ownership violation returns Rejected(CUSTOMER_DOES_NOT_OWN_ORDER);
+- unknown Order returns Rejected(ORDER_NOT_FOUND);
+- repository read failure propagates IllegalStateException("repository unavailable");
+- repository write failure propagates IllegalStateException("repository write failed").
+
+Observed HTTP behavior:
+- valid cancellation returns 200;
+- repeated cancellation returns 409 and ILLEGAL_TRANSITION;
+- wrong-customer cancellation returns 403 and CUSTOMER_DOES_NOT_OWN_ORDER;
+- unknown Order cancellation returns 404 and ORDER_NOT_FOUND;
+- unexpected NullPointerException maps to 500 with generic technical-failure detail.
+
+## Interpretation
+
+Expected business rejection is now part of the normal application result contract.
+
+Technical failure remains exceptional execution and is not disguised as business rejection.
+
+The same domain rules from earlier checkpoints remain enforced.
 
 ## Limitations
 
-This experiment does not determine:
-- whether a technical failure is retryable;
+The experiment does not determine:
+- whether technical failure is retryable;
 - retry/backoff policy;
-- circuit-breaker behavior;
-- dependency timeout policy;
-- final platform-wide error envelope;
-- distributed/network failure semantics.
+- timeout policy;
+- circuit-breaker policy;
+- distributed dependency failure semantics;
+- final platform-wide error envelope.
 
 ## Conclusion
 
-Pending execution evidence.
+P09 successfully separates business rejection from technical failure without introducing resilience mechanisms.
