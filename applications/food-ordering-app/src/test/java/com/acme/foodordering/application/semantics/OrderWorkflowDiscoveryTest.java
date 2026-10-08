@@ -6,9 +6,11 @@ import com.acme.foodordering.application.port.in.PlaceOrderResult;
 import com.acme.foodordering.application.service.OrderSnapshot;
 import com.acme.foodordering.application.service.OrderWorkflowService;
 import com.acme.foodordering.application.service.PlaceOrderService;
+import com.acme.foodordering.domain.order.CustomerId;
 import com.acme.foodordering.domain.order.IllegalOrderTransitionException;
 import com.acme.foodordering.domain.order.OrderId;
 import com.acme.foodordering.domain.order.OrderLifecycleTransition;
+import com.acme.foodordering.domain.order.RestaurantId;
 import com.acme.foodordering.domain.order.workflow.OrderWorkflowAction;
 import com.acme.foodordering.domain.order.workflow.WorkflowParticipant;
 import org.junit.jupiter.api.Test;
@@ -24,19 +26,22 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class OrderWorkflowDiscoveryTest {
 
+    private static final CustomerId CUSTOMER = new CustomerId("customer-1");
+    private static final RestaurantId RESTAURANT = new RestaurantId("restaurant-1");
+
     private final InMemoryOrderRepository repository = new InMemoryOrderRepository();
     private final Clock clock = Clock.fixed(Instant.parse("2026-10-08T06:00:00Z"), ZoneOffset.UTC);
     private final PlaceOrderService placeOrder = new PlaceOrderService(repository, clock);
     private final OrderWorkflowService workflow = new OrderWorkflowService(repository, clock);
 
     @Test
-    void happyPathPreservesWorkflowAndNowEvolvesLifecycleState() {
+    void happyPathPreservesWorkflowAndLifecycleState() {
         var orderId = placeOrder();
 
         var paid = workflow.recordPayment(orderId);
-        var accepted = workflow.recordRestaurantAcceptance(orderId);
-        var preparing = workflow.recordPreparationStarted(orderId);
-        var completed = workflow.recordCompletion(orderId);
+        var accepted = workflow.recordRestaurantAcceptance(orderId, RESTAURANT);
+        var preparing = workflow.recordPreparationStarted(orderId, RESTAURANT);
+        var completed = workflow.recordCompletion(orderId, RESTAURANT);
 
         assertThat(paid.status()).isEqualTo("PLACED");
         assertThat(accepted.status()).isEqualTo("ACCEPTED");
@@ -59,11 +64,11 @@ class OrderWorkflowDiscoveryTest {
     }
 
     @Test
-    void restaurantRejectionFromPlacedStateProducesRejectedLifecycleState() {
+    void restaurantRejectionAfterPaymentAllowsRefundRequest() {
         var orderId = placeOrder();
 
         workflow.recordPayment(orderId);
-        var rejected = workflow.recordRestaurantRejection(orderId);
+        var rejected = workflow.recordRestaurantRejection(orderId, RESTAURANT);
         var refundRequested = workflow.recordRefundRequest(orderId);
 
         assertThat(rejected.status()).isEqualTo("REJECTED");
@@ -80,7 +85,7 @@ class OrderWorkflowDiscoveryTest {
     void cancellationFromPlacedStateProducesCancelledLifecycleState() {
         var orderId = placeOrder();
 
-        var cancelled = workflow.recordCancellation(orderId);
+        var cancelled = workflow.recordCancellation(orderId, CUSTOMER);
 
         assertThat(cancelled.status()).isEqualTo("CANCELLED");
         assertThat(actions(cancelled)).containsExactly(
@@ -89,11 +94,11 @@ class OrderWorkflowDiscoveryTest {
     }
 
     @Test
-    void cancellationAfterRecordedPaymentRemainsAPlacedToCancelledTransition() {
+    void cancellationAfterPaymentAllowsRefundRequest() {
         var orderId = placeOrder();
 
         var paid = workflow.recordPayment(orderId);
-        var cancelled = workflow.recordCancellation(orderId);
+        var cancelled = workflow.recordCancellation(orderId, CUSTOMER);
         var refundRequested = workflow.recordRefundRequest(orderId);
 
         assertThat(paid.status()).isEqualTo("PLACED");
@@ -108,10 +113,10 @@ class OrderWorkflowDiscoveryTest {
     }
 
     @Test
-    void p05PreparationBeforeAcceptanceFragilityIsNowRejected() {
+    void preparationBeforeAcceptanceRemainsRejected() {
         var orderId = placeOrder();
 
-        assertThatThrownBy(() -> workflow.recordPreparationStarted(orderId))
+        assertThatThrownBy(() -> workflow.recordPreparationStarted(orderId, RESTAURANT))
                 .isInstanceOf(IllegalOrderTransitionException.class)
                 .satisfies(error -> {
                     var transitionError = (IllegalOrderTransitionException) error;
@@ -128,8 +133,8 @@ class OrderWorkflowDiscoveryTest {
 
     private OrderId placeOrder() {
         var result = placeOrder.place(new PlaceOrderCommand(
-                "customer-1",
-                "restaurant-1",
+                CUSTOMER.value(),
+                RESTAURANT.value(),
                 List.of(new PlaceOrderCommand.Line(
                         "burger-1",
                         "Classic Burger",

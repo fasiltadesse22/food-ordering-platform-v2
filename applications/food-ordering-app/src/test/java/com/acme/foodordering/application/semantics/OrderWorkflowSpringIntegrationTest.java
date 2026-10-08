@@ -6,6 +6,7 @@ import com.acme.foodordering.application.port.in.PlaceOrderCommand;
 import com.acme.foodordering.application.port.in.PlaceOrderResult;
 import com.acme.foodordering.application.port.in.PlaceOrderUseCase;
 import com.acme.foodordering.application.service.OrderSnapshot;
+import com.acme.foodordering.domain.order.RestaurantId;
 import com.acme.foodordering.domain.order.workflow.OrderWorkflowAction;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +30,7 @@ class OrderWorkflowSpringIntegrationTest {
     GetOrderUseCase getOrder;
 
     @Test
-    void workflowMilestonesEvolveTheSameCurrentOrderThroughLegalLifecycleTransitions() {
+    void workflowMilestonesEvolveTheSameCurrentOrderThroughGuardedLifecycleTransitions() {
         var placed = placeOrder.place(new PlaceOrderCommand(
                 "customer-workflow",
                 "restaurant-workflow",
@@ -43,11 +44,12 @@ class OrderWorkflowSpringIntegrationTest {
 
         assertThat(placed).isInstanceOf(PlaceOrderResult.Accepted.class);
         var orderId = ((PlaceOrderResult.Accepted) placed).order().id();
+        var restaurantId = new RestaurantId("restaurant-workflow");
 
         workflow.recordPayment(orderId);
-        workflow.recordRestaurantAcceptance(orderId);
-        workflow.recordPreparationStarted(orderId);
-        workflow.recordCompletion(orderId);
+        workflow.recordRestaurantAcceptance(orderId, restaurantId);
+        workflow.recordPreparationStarted(orderId, restaurantId);
+        workflow.recordCompletion(orderId, restaurantId);
 
         var observed = getOrder.get(orderId);
 

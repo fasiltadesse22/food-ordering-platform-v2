@@ -1,27 +1,45 @@
 package com.acme.foodordering.application.port.in;
 
 import com.acme.foodordering.application.service.OrderSnapshot;
+import com.acme.foodordering.domain.order.CustomerId;
 import com.acme.foodordering.domain.order.OrderId;
+import com.acme.foodordering.domain.order.RestaurantId;
 
 /**
- * P05 application boundary for recording discovered workflow milestones.
+ * Application boundary for the selected Order workflow.
  *
- * These operations intentionally do not define legal/illegal lifecycle
- * transitions. P06 will formalize that state-machine responsibility.
+ * P07 makes business context explicit for lifecycle actions. The supplied
+ * customer/restaurant identity is a claimed business context, not proof that
+ * authentication has occurred.
  */
 public interface OrderWorkflowUseCase {
 
     OrderSnapshot recordPayment(OrderId orderId);
 
-    OrderSnapshot recordRestaurantAcceptance(OrderId orderId);
+    OrderSnapshot recordRestaurantAcceptance(
+            OrderId orderId,
+            RestaurantId actingRestaurantId
+    );
 
-    OrderSnapshot recordRestaurantRejection(OrderId orderId);
+    OrderSnapshot recordRestaurantRejection(
+            OrderId orderId,
+            RestaurantId actingRestaurantId
+    );
 
-    OrderSnapshot recordCancellation(OrderId orderId);
+    OrderSnapshot recordCancellation(
+            OrderId orderId,
+            CustomerId actingCustomerId
+    );
 
     OrderSnapshot recordRefundRequest(OrderId orderId);
 
-    OrderSnapshot recordPreparationStarted(OrderId orderId);
+    OrderSnapshot recordPreparationStarted(
+            OrderId orderId,
+            RestaurantId actingRestaurantId
+    );
 
-    OrderSnapshot recordCompletion(OrderId orderId);
+    OrderSnapshot recordCompletion(
+            OrderId orderId,
+            RestaurantId actingRestaurantId
+    );
 }

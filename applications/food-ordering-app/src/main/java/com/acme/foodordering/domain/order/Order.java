@@ -61,10 +61,6 @@ public final class Order {
         );
     }
 
-    /**
-     * Payment is intentionally modeled as an orthogonal workflow milestone in P06.
-     * It does not change OrderStatus.
-     */
     public Order recordPayment(Instant occurredAt) {
         return recordMilestone(
                 OrderWorkflowAction.PAYMENT_RECORDED,
@@ -73,23 +69,42 @@ public final class Order {
         );
     }
 
-    public Order recordRestaurantAcceptance(Instant occurredAt) {
-        return transition(OrderLifecycleTransition.ACCEPT, occurredAt);
+    public Order recordRestaurantAcceptance(
+            RestaurantId actingRestaurantId,
+            Instant occurredAt
+    ) {
+        return transition(
+                OrderLifecycleTransition.ACCEPT,
+                occurredAt,
+                () -> requireOwningRestaurant(actingRestaurantId)
+        );
     }
 
-    public Order recordRestaurantRejection(Instant occurredAt) {
-        return transition(OrderLifecycleTransition.REJECT, occurredAt);
+    public Order recordRestaurantRejection(
+            RestaurantId actingRestaurantId,
+            Instant occurredAt
+    ) {
+        return transition(
+                OrderLifecycleTransition.REJECT,
+                occurredAt,
+                () -> requireOwningRestaurant(actingRestaurantId)
+        );
     }
 
-    public Order recordCancellation(Instant occurredAt) {
-        return transition(OrderLifecycleTransition.CANCEL, occurredAt);
+    public Order recordCancellation(
+            CustomerId actingCustomerId,
+            Instant occurredAt
+    ) {
+        return transition(
+                OrderLifecycleTransition.CANCEL,
+                occurredAt,
+                () -> requireOwningCustomer(actingCustomerId)
+        );
     }
 
-    /**
-     * Refund request remains an orthogonal workflow milestone. P07/P08 will
-     * deepen the conditions and compensation semantics.
-     */
     public Order recordRefundRequest(Instant occurredAt) {
+        requireRefundEligible();
+
         return recordMilestone(
                 OrderWorkflowAction.REFUND_REQUESTED,
                 WorkflowParticipant.PLATFORM,
@@ -97,21 +112,38 @@ public final class Order {
         );
     }
 
-    public Order recordPreparationStarted(Instant occurredAt) {
-        return transition(OrderLifecycleTransition.START_PREPARATION, occurredAt);
+    public Order recordPreparationStarted(
+            RestaurantId actingRestaurantId,
+            Instant occurredAt
+    ) {
+        return transition(
+                OrderLifecycleTransition.START_PREPARATION,
+                occurredAt,
+                () -> requireOwningRestaurant(actingRestaurantId)
+        );
     }
 
-    public Order recordCompletion(Instant occurredAt) {
-        return transition(OrderLifecycleTransition.COMPLETE, occurredAt);
+    public Order recordCompletion(
+            RestaurantId actingRestaurantId,
+            Instant occurredAt
+    ) {
+        return transition(
+                OrderLifecycleTransition.COMPLETE,
+                occurredAt,
+                () -> requireOwningRestaurant(actingRestaurantId)
+        );
     }
 
     private Order transition(
             OrderLifecycleTransition transition,
-            Instant occurredAt
+            Instant occurredAt,
+            Runnable contextualGuard
     ) {
-        if (status != transition.source()) {
-            throw new IllegalOrderTransitionException(id, status, transition);
-        }
+        Objects.requireNonNull(occurredAt, "occurredAt must not be null");
+        Objects.requireNonNull(contextualGuard, "contextualGuard must not be null");
+
+        requireLegalSourceState(transition);
+        contextualGuard.run();
 
         return evolve(
                 transition.target(),
@@ -121,11 +153,70 @@ public final class Order {
         );
     }
 
+    private void requireLegalSourceState(OrderLifecycleTransition transition) {
+        if (status != transition.source()) {
+            throw new IllegalOrderTransitionException(id, status, transition);
+        }
+    }
+
+    private void requireOwningCustomer(CustomerId actingCustomerId) {
+        Objects.requireNonNull(actingCustomerId, "actingCustomerId must not be null");
+
+        if (!customerId.equals(actingCustomerId)) {
+            throw new OrderGuardViolationException(
+                    id,
+                    OrderGuardViolationException.Code.CUSTOMER_DOES_NOT_OWN_ORDER,
+                    "customer " + actingCustomerId.value()
+                            + " cannot act on order " + id
+                            + " owned by customer " + customerId.value()
+            );
+        }
+    }
+
+    private void requireOwningRestaurant(RestaurantId actingRestaurantId) {
+        Objects.requireNonNull(actingRestaurantId, "actingRestaurantId must not be null");
+
+        if (!restaurantId.equals(actingRestaurantId)) {
+            throw new OrderGuardViolationException(
+                    id,
+                    OrderGuardViolationException.Code.RESTAURANT_DOES_NOT_OWN_ORDER,
+                    "restaurant " + actingRestaurantId.value()
+                            + " cannot act on order " + id
+                            + " assigned to restaurant " + restaurantId.value()
+            );
+        }
+    }
+
+    private void requireRefundEligible() {
+        if (status != OrderStatus.REJECTED && status != OrderStatus.CANCELLED) {
+            throw new OrderGuardViolationException(
+                    id,
+                    OrderGuardViolationException.Code.REFUND_REQUIRES_REJECTED_OR_CANCELLED_ORDER,
+                    "refund request requires order " + id
+                            + " to be REJECTED or CANCELLED, but was " + status
+            );
+        }
+
+        if (!hasWorkflowAction(OrderWorkflowAction.PAYMENT_RECORDED)) {
+            throw new OrderGuardViolationException(
+                    id,
+                    OrderGuardViolationException.Code.REFUND_REQUIRES_RECORDED_PAYMENT,
+                    "refund request requires a recorded payment for order " + id
+            );
+        }
+    }
+
+    private boolean hasWorkflowAction(OrderWorkflowAction action) {
+        return workflowOccurrences.stream()
+                .anyMatch(occurrence -> occurrence.action() == action);
+    }
+
     private Order recordMilestone(
             OrderWorkflowAction action,
             WorkflowParticipant participant,
             Instant occurredAt
     ) {
+        Objects.requireNonNull(occurredAt, "occurredAt must not be null");
         return evolve(status, action, participant, occurredAt);
     }
 

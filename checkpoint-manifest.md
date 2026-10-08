@@ -1,89 +1,85 @@
-# Checkpoint Manifest — C1.1-P06
+# Checkpoint Manifest — C1.1-P07 Candidate
 
 ## Identity
 
-- Checkpoint: C1.1-P06
-- Current status: VERIFIED AND FROZEN
-- Inherited checkpoint: C1.1-P05
-- Inherited branch: checkpoints/C1.1-P05
-- Inherited commit: 2e63f12ea30fc211b6a5450654536415aaaa164d
-- P06 implementation commit: 697fb55ab5bda075ed38840d3241d3c4aea1de02
-- P06 verification run: 37744525908
+- Target checkpoint: C1.1-P07
+- Current status: CANDIDATE — NOT FROZEN
+- Inherited checkpoint: C1.1-P06
+- Inherited branch: checkpoints/C1.1-P06
+- Inherited commit: a0a11c303b11554545e9dac08d5f64661b1e217f
 
 ## Engineering question
 
-Which lifecycle transitions are valid, and which must be impossible?
+Even when a transition is structurally legal from the current state, what additional facts must be true before it is allowed, and what must be true afterward?
 
-## Lifecycle states
+## Preconditions and guards introduced
 
-- PLACED
-- ACCEPTED
-- REJECTED
-- CANCELLED
-- PREPARING
-- COMPLETED
+Restaurant-side operations:
+- source-state legality from P06;
+- acting RestaurantId must equal Order.restaurantId.
 
-## Verified legal transitions
+Cancellation:
+- source-state legality from P06;
+- acting CustomerId must equal Order.customerId.
 
-- PLACED → ACCEPTED
-- PLACED → REJECTED
-- PLACED → CANCELLED
-- ACCEPTED → PREPARING
-- PREPARING → COMPLETED
+Refund request:
+- Order must be REJECTED or CANCELLED;
+- PAYMENT_RECORDED must exist.
 
-Payment/refund remain orthogonal workflow milestones.
+## Postconditions made explicit
 
-## Verification
+For successful lifecycle transitions:
+- Order identity is preserved;
+- customer/restaurant ownership is preserved;
+- stable order content is preserved;
+- expected target state is reached;
+- exactly one expected workflow occurrence is appended;
+- original immutable representation is unchanged.
 
-GitHub Actions executed:
-
-mvn -B -ntp verify
-
-Observed:
-
-Tests run: 28, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
-
-## Verified illegal examples
-
-- PLACED → START_PREPARATION rejected;
-- ACCEPTED → REJECT rejected;
-- ACCEPTED → COMPLETE rejected.
-
-Rejected attempts leave the existing immutable Order representation unchanged and do not append the attempted workflow occurrence.
+On failed state/guard checks:
+- no new current Order is saved;
+- attempted occurrence is not appended.
 
 ## Architectural interpretation
 
-P06 introduces explicit lifecycle legality, not a workflow engine or state-machine framework.
+P07 introduces domain guards and contracts.
+
+It does not introduce authentication or security infrastructure.
+
+The supplied acting CustomerId/RestaurantId is claimed business context, not proof of caller identity.
 
 The project still contains no:
-- state-machine framework;
+- Spring Security authorization flow for these lifecycle actions;
 - PostgreSQL;
 - Kafka;
 - Redis;
 - Saga;
 - Outbox;
-- Event Sourcing;
 - optimistic locking;
 - distributed lock;
 - service split.
 
-## Evidence-qualified guarantees
+## Evidence status
 
-Within the tested one-process model:
-- selected legal transitions succeed;
-- selected illegal transitions fail before current-state replacement;
-- P05 preparation-before-acceptance fragility is closed;
-- payment can be recorded while lifecycle remains PLACED.
+Pending P07 CI.
 
-Not guaranteed:
-- rich contextual guards;
-- terminal/reversal semantics;
-- concurrency correctness;
-- stale-write rejection;
-- repeated-command safety;
-- durability.
+## Fragilities intentionally preserved
+
+- business identity can be forged if an untrusted adapter supplies it;
+- guards can evaluate stale Order state;
+- no concurrency protection;
+- no repeated-command semantics;
+- current state is transient.
 
 ## Next pressure
 
-Part 1.1.7 deepens guards, preconditions and postconditions: a source state can be necessary for a transition without being sufficient to authorize it.
+Part 1.1.8 must interpret terminal, reversible and irreversible lifecycle outcomes and distinguish reversal from compensation.
+
+## Freeze gate
+
+1. mvn -B -ntp verify succeeds;
+2. inherited tests remain green where semantically applicable;
+3. wrong restaurant/customer are rejected;
+4. refund preconditions are enforced;
+5. successful transition postconditions are observed;
+6. guard failure leaves repository authority unchanged.

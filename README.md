@@ -1,42 +1,38 @@
 # Food Ordering Platform — V8.0 Fresh-Start Evolution
 
-Current verified checkpoint: C1.1-P06 — State Machines and Legal/Illegal Transitions
-Previous checkpoint: checkpoints/C1.1-P05
+Inherited verified checkpoint: C1.1-P06
+Current evolution: C1.1-P07 candidate — Guards, Preconditions and Postconditions
 
 ## Verification
 
 mvn -B -ntp verify
 
-P06 implementation verification:
+P07 is not frozen until GitHub Actions verifies the exact candidate.
 
-Tests run: 28, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
+## Current contract layers
 
-## Current Order lifecycle
+Lifecycle action:
+1. source-state precondition;
+2. contextual domain guard;
+3. immutable evolution;
+4. explicit postconditions verified by tests;
+5. repository current-state replacement only after successful domain evolution.
 
-PLACED
-  ├→ ACCEPTED → PREPARING → COMPLETED
-  ├→ REJECTED
-  └→ CANCELLED
-
-Payment/refund remain workflow milestones rather than OrderStatus values.
+Examples:
+- another restaurant cannot accept this Order;
+- another customer cannot cancel this Order;
+- refund request requires REJECTED/CANCELLED and a recorded payment.
 
 ## Important boundary
 
-P06 enforces source-state legality.
+Typed acting CustomerId/RestaurantId is business context, not authentication proof.
 
-It deliberately does not yet fully define:
-- contextual guards/preconditions;
-- terminality;
-- reversibility/compensation;
-- concurrency/stale-state behavior;
-- repeated-command semantics.
+P07 does not add Spring Security or a trust mechanism for caller identity.
 
 ## Current topology
 
 - one Java 21 / Spring Boot deployable;
 - in-memory current-state repository;
-- no state-machine framework;
 - no database;
 - no messaging;
 - no Saga;

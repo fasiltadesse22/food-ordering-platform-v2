@@ -12,14 +12,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class OrderStateMachineTest {
 
     private static final Instant NOW = Instant.parse("2026-10-08T07:00:00Z");
+    private static final CustomerId CUSTOMER = new CustomerId("customer-1");
+    private static final RestaurantId RESTAURANT = new RestaurantId("restaurant-1");
 
     @Test
     void legalFulfillmentPathIsPlacedToAcceptedToPreparingToCompleted() {
         var placed = placedOrder();
 
-        var accepted = placed.recordRestaurantAcceptance(NOW);
-        var preparing = accepted.recordPreparationStarted(NOW.plusSeconds(1));
-        var completed = preparing.recordCompletion(NOW.plusSeconds(2));
+        var accepted = placed.recordRestaurantAcceptance(RESTAURANT, NOW);
+        var preparing = accepted.recordPreparationStarted(RESTAURANT, NOW.plusSeconds(1));
+        var completed = preparing.recordCompletion(RESTAURANT, NOW.plusSeconds(2));
 
         assertThat(placed.status()).isEqualTo(OrderStatus.PLACED);
         assertThat(accepted.status()).isEqualTo(OrderStatus.ACCEPTED);
@@ -29,14 +31,14 @@ class OrderStateMachineTest {
 
     @Test
     void placedOrderCanBranchToRejected() {
-        var rejected = placedOrder().recordRestaurantRejection(NOW);
+        var rejected = placedOrder().recordRestaurantRejection(RESTAURANT, NOW);
 
         assertThat(rejected.status()).isEqualTo(OrderStatus.REJECTED);
     }
 
     @Test
     void placedOrderCanBranchToCancelled() {
-        var cancelled = placedOrder().recordCancellation(NOW);
+        var cancelled = placedOrder().recordCancellation(CUSTOMER, NOW);
 
         assertThat(cancelled.status()).isEqualTo(OrderStatus.CANCELLED);
     }
@@ -52,7 +54,7 @@ class OrderStateMachineTest {
     void preparationFromPlacedIsIllegalAndLeavesOriginalRepresentationUnchanged() {
         var placed = placedOrder();
 
-        assertThatThrownBy(() -> placed.recordPreparationStarted(NOW))
+        assertThatThrownBy(() -> placed.recordPreparationStarted(RESTAURANT, NOW))
                 .isInstanceOf(IllegalOrderTransitionException.class)
                 .hasMessageContaining("START_PREPARATION")
                 .hasMessageContaining("PLACED");
@@ -63,9 +65,12 @@ class OrderStateMachineTest {
 
     @Test
     void rejectionAfterAcceptanceIsIllegal() {
-        var accepted = placedOrder().recordRestaurantAcceptance(NOW);
+        var accepted = placedOrder().recordRestaurantAcceptance(RESTAURANT, NOW);
 
-        assertThatThrownBy(() -> accepted.recordRestaurantRejection(NOW.plusSeconds(1)))
+        assertThatThrownBy(() -> accepted.recordRestaurantRejection(
+                RESTAURANT,
+                NOW.plusSeconds(1)
+        ))
                 .isInstanceOf(IllegalOrderTransitionException.class)
                 .hasMessageContaining("REJECT")
                 .hasMessageContaining("ACCEPTED");
@@ -75,9 +80,12 @@ class OrderStateMachineTest {
 
     @Test
     void completionBeforePreparationIsIllegal() {
-        var accepted = placedOrder().recordRestaurantAcceptance(NOW);
+        var accepted = placedOrder().recordRestaurantAcceptance(RESTAURANT, NOW);
 
-        assertThatThrownBy(() -> accepted.recordCompletion(NOW.plusSeconds(1)))
+        assertThatThrownBy(() -> accepted.recordCompletion(
+                RESTAURANT,
+                NOW.plusSeconds(1)
+        ))
                 .isInstanceOf(IllegalOrderTransitionException.class)
                 .hasMessageContaining("COMPLETE")
                 .hasMessageContaining("ACCEPTED");
@@ -88,8 +96,8 @@ class OrderStateMachineTest {
     private static Order placedOrder() {
         return Order.place(
                 OrderId.from("123e4567-e89b-12d3-a456-426614174000"),
-                new CustomerId("customer-1"),
-                new RestaurantId("restaurant-1"),
+                CUSTOMER,
+                RESTAURANT,
                 List.of(new OrderLine(
                         "burger-1",
                         "Classic Burger",
