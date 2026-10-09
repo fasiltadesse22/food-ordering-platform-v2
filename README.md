@@ -1,7 +1,7 @@
 # Food Ordering Platform — V8.0 Fresh-Start Evolution
 
-Inherited verified checkpoint: C1.1-P11
-Current evolution: C1.1-P12 candidate — Requirement, Implementation, Observation & Guarantee
+Current verified checkpoint: C1.1-P12 — Requirement, Implementation, Observation & Guarantee
+Previous checkpoint: checkpoints/C1.1-P11
 
 ## Part type
 
@@ -11,13 +11,19 @@ P12 intentionally does not change production application behavior.
 
 ## Verification
 
+GitHub Actions run:
+37902228783
+
+Command:
 mvn -B -ntp verify
 
-The exact P12 evidence checkpoint is not frozen until CI executes successfully.
+Observed:
+Tests run: 68, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
 
 ## Evidence vocabulary
 
-The project now distinguishes:
+The project distinguishes:
 - requirement;
 - implementation;
 - observation;

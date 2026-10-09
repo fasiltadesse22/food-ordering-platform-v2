@@ -33,9 +33,6 @@ No production behavior is changed.
 Candidate:
 "ConcurrentHashMap makes Order workflow updates atomic."
 
-Evidence:
-repository uses ConcurrentHashMap.
-
 Classification:
 unsupported overclaim.
 
@@ -47,9 +44,6 @@ Corrected:
 Candidate:
 "P11 proves database transactions are required."
 
-Evidence:
-split mutable representations become invariant-invalid after injected failure.
-
 Classification:
 too strong.
 
@@ -60,9 +54,6 @@ Corrected:
 
 Candidate:
 "A repository exception means the Order was not saved."
-
-Evidence:
-one deterministic fake repository throws before replacement.
 
 Classification:
 overgeneralization.
@@ -79,21 +70,39 @@ Classification:
 unsupported.
 
 Corrected:
-"GitHub Actions run 37886764685 executed 68 tests with zero failures for the exercised scenarios. This increases evidence for those paths but does not establish universal correctness."
+"GitHub Actions run 37902228783 executed 68 tests with zero failures for the exercised current checkpoint scenarios. This is an observation about those paths, not universal proof of correctness."
 
 ## Execution
 
-P12 changes documentation/evidence only.
+GitHub Actions run:
+37902228783
 
-The exact P12 checkpoint must still execute:
-
+Command:
 mvn -B -ntp verify
 
-This verifies that the inherited real application remains green after the evidence-audit evolution.
+Observed:
+- tests run: 68;
+- failures: 0;
+- errors: 0;
+- skipped: 0;
+- BUILD SUCCESS.
 
-## Observation
+## Interpretation
 
-Pending P12 CI.
+The P12 repository/documentation evolution did not change production code or configuration.
+
+The exact evidence-bearing candidate retained the green P11 application behavior under the existing automated suite.
+
+The CI result is itself classified as an observation.
+
+It does not establish:
+- all possible inputs;
+- all thread interleavings;
+- crash durability;
+- production-scale performance;
+- availability;
+- security completeness;
+- future database behavior.
 
 ## Limitations
 
@@ -102,8 +111,8 @@ P12 does not:
 - prove durability;
 - introduce production telemetry;
 - prove future database behavior;
-- convert probabilistic confidence into mathematical proof.
+- convert confidence into mathematical proof.
 
 ## Conclusion
 
-Pending exact-checkpoint CI.
+P12 successfully establishes a disciplined claim vocabulary and applies it to the actual accumulated C1.1 evidence without inventing a new runtime mechanism.
