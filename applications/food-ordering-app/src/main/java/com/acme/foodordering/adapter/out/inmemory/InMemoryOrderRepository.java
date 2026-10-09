@@ -8,6 +8,17 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Current in-process authority for Order.
+ *
+ * saveCurrent replaces one map entry with one complete immutable Order
+ * representation. That is useful local publication behavior, but it is NOT:
+ * - durable persistence;
+ * - a multi-object/database transaction;
+ * - atomic read-modify-write across findCurrentById + saveCurrent;
+ * - optimistic/pessimistic concurrency control;
+ * - distributed atomicity.
+ */
 public final class InMemoryOrderRepository implements OrderRepository {
 
     private final Map<OrderId, Order> currentOrders = new ConcurrentHashMap<>();

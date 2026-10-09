@@ -1,44 +1,45 @@
 # Food Ordering Platform — V8.0 Fresh-Start Evolution
 
-Current verified checkpoint: C1.1-P10 — Business Invariants, Validation Rules and Database Constraints
-Previous checkpoint: checkpoints/C1.1-P09
+Inherited verified checkpoint: C1.1-P10
+Current evolution: C1.1-P11 candidate — Atomicity and Local Consistency Requirements
 
 ## Verification
 
 mvn -B -ntp verify
 
-P10 implementation verification:
+P11 is not frozen until GitHub Actions verifies the exact candidate.
 
-Tests run: 62, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
+## Current local atomicity model
 
-## Rule layers
+Order lifecycle evolution binds:
+- next lifecycle state;
+- explaining workflow occurrence
 
-HTTP boundary validation:
-- rejects malformed request shape early.
+inside one OrderEvolution.
 
-Domain structural validation:
-- protects identifier and line value objects even outside HTTP.
+One new immutable invariant-checked Order is built before the repository replaces current authority.
 
-Business invariants:
-- Order state/history coherence is verified whenever an Order representation is constructed.
+## Important non-guarantees
 
-Future database constraints:
-- documented for Cluster 1.2;
-- not implemented or claimed in P10.
+This is NOT:
+- a database transaction;
+- durability;
+- atomic find+modify+save under concurrency;
+- multi-Order atomicity;
+- distributed atomicity.
 
-## Important distinction
+## Experiment
 
-Passing validation does not prove business invariant correctness.
+P11 preserves a deliberately fragile split status/history model and injects failure after the first write in both orderings.
 
-A database constraint can reinforce a rule without becoming the business rule itself.
+Both partial states must violate current Order invariants.
 
 ## Current topology
 
 - one Java 21 / Spring Boot deployable;
 - in-memory repository;
 - no PostgreSQL;
-- no transaction manager;
+- no @Transactional;
 - no messaging.
 
 See checkpoint-manifest.md and architecture/ for evidence-qualified details.

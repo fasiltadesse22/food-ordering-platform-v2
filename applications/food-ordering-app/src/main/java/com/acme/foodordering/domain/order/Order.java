@@ -71,10 +71,7 @@ public final class Order {
         );
     }
 
-    public Order recordRestaurantAcceptance(
-            RestaurantId actingRestaurantId,
-            Instant occurredAt
-    ) {
+    public Order recordRestaurantAcceptance(RestaurantId actingRestaurantId, Instant occurredAt) {
         return transition(
                 OrderLifecycleTransition.ACCEPT,
                 occurredAt,
@@ -82,10 +79,7 @@ public final class Order {
         );
     }
 
-    public Order recordRestaurantRejection(
-            RestaurantId actingRestaurantId,
-            Instant occurredAt
-    ) {
+    public Order recordRestaurantRejection(RestaurantId actingRestaurantId, Instant occurredAt) {
         return transition(
                 OrderLifecycleTransition.REJECT,
                 occurredAt,
@@ -93,10 +87,7 @@ public final class Order {
         );
     }
 
-    public Order recordCancellation(
-            CustomerId actingCustomerId,
-            Instant occurredAt
-    ) {
+    public Order recordCancellation(CustomerId actingCustomerId, Instant occurredAt) {
         return transition(
                 OrderLifecycleTransition.CANCEL,
                 occurredAt,
@@ -107,7 +98,6 @@ public final class Order {
     public Order recordRefundRequest(Instant occurredAt) {
         requireRefundEligible();
         requireRefundNotAlreadyRequested();
-
         return recordMilestone(
                 OrderWorkflowAction.REFUND_REQUESTED,
                 WorkflowParticipant.PLATFORM,
@@ -122,15 +112,9 @@ public final class Order {
     ) {
         requireOwningCustomer(actingCustomerId);
         requirePlacedForModification();
-
-        Objects.requireNonNull(
-                replacementLines,
-                "replacementLines must not be null"
-        );
+        Objects.requireNonNull(replacementLines, "replacementLines must not be null");
         if (replacementLines.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "an order must contain at least one line"
-            );
+            throw new IllegalArgumentException("an order must contain at least one line");
         }
         Objects.requireNonNull(occurredAt, "occurredAt must not be null");
 
@@ -152,10 +136,7 @@ public final class Order {
         );
     }
 
-    public Order recordPreparationStarted(
-            RestaurantId actingRestaurantId,
-            Instant occurredAt
-    ) {
+    public Order recordPreparationStarted(RestaurantId actingRestaurantId, Instant occurredAt) {
         return transition(
                 OrderLifecycleTransition.START_PREPARATION,
                 occurredAt,
@@ -163,10 +144,7 @@ public final class Order {
         );
     }
 
-    public Order recordCompletion(
-            RestaurantId actingRestaurantId,
-            Instant occurredAt
-    ) {
+    public Order recordCompletion(RestaurantId actingRestaurantId, Instant occurredAt) {
         return transition(
                 OrderLifecycleTransition.COMPLETE,
                 occurredAt,
@@ -180,40 +158,29 @@ public final class Order {
             Runnable contextualGuard
     ) {
         Objects.requireNonNull(occurredAt, "occurredAt must not be null");
-        Objects.requireNonNull(
-                contextualGuard,
-                "contextualGuard must not be null"
-        );
+        Objects.requireNonNull(contextualGuard, "contextualGuard must not be null");
 
         requireLegalSourceState(transition);
         contextualGuard.run();
 
-        return evolve(
+        return apply(new OrderEvolution(
                 transition.target(),
-                transition.workflowAction(),
-                transition.participant(),
-                occurredAt
-        );
+                new OrderWorkflowOccurrence(
+                        transition.workflowAction(),
+                        transition.participant(),
+                        occurredAt
+                )
+        ));
     }
 
-    private void requireLegalSourceState(
-            OrderLifecycleTransition transition
-    ) {
+    private void requireLegalSourceState(OrderLifecycleTransition transition) {
         if (status != transition.source()) {
-            throw new IllegalOrderTransitionException(
-                    id,
-                    status,
-                    transition
-            );
+            throw new IllegalOrderTransitionException(id, status, transition);
         }
     }
 
     private void requireOwningCustomer(CustomerId actingCustomerId) {
-        Objects.requireNonNull(
-                actingCustomerId,
-                "actingCustomerId must not be null"
-        );
-
+        Objects.requireNonNull(actingCustomerId, "actingCustomerId must not be null");
         if (!customerId.equals(actingCustomerId)) {
             throw new OrderGuardViolationException(
                     id,
@@ -225,14 +192,8 @@ public final class Order {
         }
     }
 
-    private void requireOwningRestaurant(
-            RestaurantId actingRestaurantId
-    ) {
-        Objects.requireNonNull(
-                actingRestaurantId,
-                "actingRestaurantId must not be null"
-        );
-
+    private void requireOwningRestaurant(RestaurantId actingRestaurantId) {
+        Objects.requireNonNull(actingRestaurantId, "actingRestaurantId must not be null");
         if (!restaurantId.equals(actingRestaurantId)) {
             throw new OrderGuardViolationException(
                     id,
@@ -245,12 +206,10 @@ public final class Order {
     }
 
     private void requireRefundEligible() {
-        if (status != OrderStatus.REJECTED
-                && status != OrderStatus.CANCELLED) {
+        if (status != OrderStatus.REJECTED && status != OrderStatus.CANCELLED) {
             throw new OrderGuardViolationException(
                     id,
-                    OrderGuardViolationException.Code
-                            .REFUND_REQUIRES_REJECTED_OR_CANCELLED_ORDER,
+                    OrderGuardViolationException.Code.REFUND_REQUIRES_REJECTED_OR_CANCELLED_ORDER,
                     "refund request requires order " + id
                             + " to be REJECTED or CANCELLED, but was " + status
             );
@@ -259,10 +218,8 @@ public final class Order {
         if (!hasWorkflowAction(OrderWorkflowAction.PAYMENT_RECORDED)) {
             throw new OrderGuardViolationException(
                     id,
-                    OrderGuardViolationException.Code
-                            .REFUND_REQUIRES_RECORDED_PAYMENT,
-                    "refund request requires a recorded payment for order "
-                            + id
+                    OrderGuardViolationException.Code.REFUND_REQUIRES_RECORDED_PAYMENT,
+                    "refund request requires a recorded payment for order " + id
             );
         }
     }
@@ -281,10 +238,8 @@ public final class Order {
         if (status != OrderStatus.PLACED) {
             throw new OrderGuardViolationException(
                     id,
-                    OrderGuardViolationException.Code
-                            .MODIFICATION_REQUIRES_PLACED_ORDER,
-                    "order modification requires PLACED state, but order "
-                            + id + " was " + status
+                    OrderGuardViolationException.Code.MODIFICATION_REQUIRES_PLACED_ORDER,
+                    "order modification requires PLACED state, but order " + id + " was " + status
             );
         }
     }
@@ -299,64 +254,35 @@ public final class Order {
             WorkflowParticipant participant,
             Instant occurredAt
     ) {
-        Objects.requireNonNull(
-                occurredAt,
-                "occurredAt must not be null"
-        );
-        return evolve(status, action, participant, occurredAt);
+        Objects.requireNonNull(occurredAt, "occurredAt must not be null");
+        return apply(new OrderEvolution(
+                status,
+                new OrderWorkflowOccurrence(action, participant, occurredAt)
+        ));
     }
 
-    private Order evolve(
-            OrderStatus nextStatus,
-            OrderWorkflowAction action,
-            WorkflowParticipant participant,
-            Instant occurredAt
-    ) {
+    private Order apply(OrderEvolution evolution) {
         var updated = new ArrayList<>(workflowOccurrences);
-        updated.add(new OrderWorkflowOccurrence(
-                action,
-                participant,
-                occurredAt
-        ));
+        updated.add(evolution.occurrence());
 
         return new Order(
                 id,
                 customerId,
                 restaurantId,
                 lines,
-                nextStatus,
+                evolution.nextStatus(),
                 placedAt,
                 updated
         );
     }
 
-    public OrderId id() {
-        return id;
-    }
-
-    public CustomerId customerId() {
-        return customerId;
-    }
-
-    public RestaurantId restaurantId() {
-        return restaurantId;
-    }
-
-    public List<OrderLine> lines() {
-        return lines;
-    }
-
-    public OrderStatus status() {
-        return status;
-    }
-
-    public Instant placedAt() {
-        return placedAt;
-    }
-
-    public List<OrderWorkflowOccurrence> workflowOccurrences() {
-        return workflowOccurrences;
-    }
+    public OrderId id() { return id; }
+    public CustomerId customerId() { return customerId; }
+    public RestaurantId restaurantId() { return restaurantId; }
+    public List<OrderLine> lines() { return lines; }
+    public OrderStatus status() { return status; }
+    public Instant placedAt() { return placedAt; }
+    public List<OrderWorkflowOccurrence> workflowOccurrences() { return workflowOccurrences; }
 
     public BigDecimal total() {
         return lines.stream()

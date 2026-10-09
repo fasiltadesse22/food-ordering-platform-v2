@@ -1,81 +1,66 @@
-# Checkpoint Manifest — C1.1-P10
+# Checkpoint Manifest — C1.1-P11 Candidate
 
 ## Identity
 
-- Checkpoint: C1.1-P10
-- Current status: VERIFIED AND FROZEN
-- Inherited checkpoint: C1.1-P09
-- Inherited branch: checkpoints/C1.1-P09
-- Inherited commit: 7ed3b6dd8862a0f0162f63f234fea8a2163a1bf6
-- P10 implementation commit: 3052ed76d4ceca0093baafe0b7144acc44842638
-- P10 verification run: 37791411073
+- Target checkpoint: C1.1-P11
+- Current status: CANDIDATE — NOT FROZEN
+- Inherited checkpoint: C1.1-P10
+- Inherited branch: checkpoints/C1.1-P10
+- Inherited commit: 61b80ae3628dfe7fe0c90f9071ef341ef7031d1f
 
 ## Engineering question
 
-Which rules define valid business state, which only validate input shape, and which are persistence enforcement mechanisms?
+Which related changes must be treated as one logical decision so that partial mutation cannot violate the current Order invariants?
 
-## Verified rule layers
+## Project changes
 
-Boundary validation:
-- Bean Validation rejects malformed HTTP request shape before use-case/domain evaluation.
+Production:
+- OrderEvolution explicitly binds next lifecycle state and workflow occurrence;
+- normal Order evolution constructs one immutable invariant-checked representation;
+- repository documentation states exact local publication boundary and non-guarantees.
 
-Domain structural validation:
-- CustomerId, RestaurantId and OrderLine defend structural validity outside HTTP.
+Experiments:
+- status-first split completion with injected failure;
+- history-first split completion with injected failure;
+- successful split completion after both writes;
+- repository failure before authority replacement;
+- successful complete authority replacement.
 
-Business invariants:
-- OrderInvariants verifies state/history coherence whenever an Order representation is constructed/evolved.
+## Semantic distinctions
 
-Future database constraints:
-- documented only;
-- not executed or claimed.
+logical atomicity != speed.
 
-## Verified distinctions
+atomicity != consistency.
 
-Validation != invariant.
+atomicity != durability.
 
-Invariant != database constraint.
+atomicity != concurrency control.
 
-Guard/precondition != invariant.
+atomicity != distributed transaction.
 
-A structurally valid set of facts can still violate an invariant.
+transaction boundary != @Transactional annotation.
 
-## Verification
+## Evidence status
 
-GitHub Actions executed:
+Pending P11 CI.
 
-mvn -B -ntp verify
+## Mechanisms deliberately absent
 
-Observed:
-
-Tests run: 62, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
-
-## Architectural interpretation
-
-P10 establishes semantic rule ownership before persistence is introduced.
-
-The project still contains no:
 - PostgreSQL;
-- migrations;
-- JDBC/JPA;
 - @Transactional;
-- Testcontainers database;
-- optimistic locking;
+- JDBC/JPA;
+- database transaction manager;
+- optimistic/pessimistic locking;
+- Saga/2PC;
 - distributed coordination.
 
-## Evidence-qualified guarantees
+## Freeze gate
 
-Within the tested one-process model:
-- selected structural request/value validation is enforced;
-- selected Order state/history invariants are enforced;
-- normal lifecycle behavior prevents invariant-invalid construction.
-
-Not guaranteed:
-- durable database enforcement;
-- concurrent invariant preservation;
-- atomic multi-change commit;
-- stale-state safety.
-
-## Next pressure
-
-Part 1.1.11 must determine which related changes belong to one logical decision and demonstrate what partial mutation/failure would mean before real database transactions arrive.
+1. root Maven verification succeeds;
+2. inherited P01-P10 tests remain green;
+3. normal completion publishes a complete state+fact representation;
+4. status-first split failure is observed as invariant-invalid;
+5. history-first split failure is observed as invariant-invalid;
+6. both split writes restore consistency;
+7. failed repository replacement leaves old authority unchanged;
+8. successful replacement publishes complete new authority.
