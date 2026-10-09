@@ -1,48 +1,54 @@
 # Food Ordering Platform — V8.0 Fresh-Start Evolution
 
-Current verified checkpoint: C1.1-P11 — Atomicity and Local Consistency Requirements
-Previous checkpoint: checkpoints/C1.1-P10
+Inherited verified checkpoint: C1.1-P11
+Current evolution: C1.1-P12 candidate — Requirement, Implementation, Observation & Guarantee
+
+## Part type
+
+Type A — conceptual + evidence evolution.
+
+P12 intentionally does not change production application behavior.
 
 ## Verification
 
 mvn -B -ntp verify
 
-P11 implementation verification:
+The exact P12 evidence checkpoint is not frozen until CI executes successfully.
 
-Tests run: 68, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
+## Evidence vocabulary
 
-## Local atomicity model
+The project now distinguishes:
+- requirement;
+- implementation;
+- observation;
+- evidence-backed inference;
+- assumption;
+- scoped guarantee/non-guarantee.
 
-OrderEvolution binds:
-- next lifecycle state;
-- explaining workflow occurrence.
+## Critical rule
 
-One immutable invariant-checked Order is constructed before one repository replacement publishes it as current in-process authority.
+A passing test is an observation about an exercised scenario.
 
-## Verified failure experiment
+It is not, by itself, proof of every possible behavior.
 
-If status and workflow history are split into independent writes:
-- state-first failure produces invalid partial state;
-- history-first failure produces invalid partial state.
+A scoped guarantee must identify:
+- property;
+- boundary;
+- enforcing mechanism;
+- assumptions;
+- evidence;
+- exclusions.
 
-Both related changes therefore belong to one logical completion decision.
-
-## Important non-guarantees
-
-This is NOT:
-- a database transaction;
-- durability;
-- atomic read-modify-write under concurrency;
-- multi-Order atomicity;
-- distributed atomicity.
-
-## Current topology
+## Current unchanged topology
 
 - one Java 21 / Spring Boot deployable;
-- in-memory repository;
+- in-memory Order authority;
 - no PostgreSQL;
 - no @Transactional;
-- no messaging.
+- no messaging;
+- no concurrency control.
 
-See checkpoint-manifest.md and architecture/ for evidence-qualified details.
+See:
+- architecture/evidence/evidence-language.md
+- architecture/evidence/C1.1-P12-claim-matrix.md
+- architecture/adr/ADR-0012-evidence-language-and-claim-strength.md

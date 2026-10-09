@@ -1,85 +1,55 @@
-# Checkpoint Manifest — C1.1-P11
+# Checkpoint Manifest — C1.1-P12 Candidate
 
 ## Identity
 
-- Checkpoint: C1.1-P11
-- Current status: VERIFIED AND FROZEN
-- Inherited checkpoint: C1.1-P10
-- Inherited branch: checkpoints/C1.1-P10
-- Inherited commit: 61b80ae3628dfe7fe0c90f9071ef341ef7031d1f
-- P11 implementation commit: fe4b60c99f195d4b5e8ac06095125df03afe8716
-- P11 verification run: 37886764685
+- Target checkpoint: C1.1-P12
+- Current status: CANDIDATE — NOT FROZEN
+- Inherited checkpoint: C1.1-P11
+- Inherited branch: checkpoints/C1.1-P11
+- Inherited commit: f68c1fa3b23075e112a15a5bf3828bb083a48711
 
 ## Engineering question
 
-Which related changes must be treated as one logical decision so that partial mutation cannot violate current Order invariants?
+What exactly do we know, how do we know it, and how strong a claim are we justified in making?
 
-## Verified local model
+## Part classification
 
-Production:
-- OrderEvolution binds next lifecycle state and workflow occurrence;
-- normal Order evolution creates one immutable invariant-checked representation;
-- one repository save publishes that complete Order as current in-process authority.
+Type A — Conceptual + Evidence Evolution.
 
-Experiment:
-- status-first split update + failure is invariant-invalid;
-- history-first split update + failure is invariant-invalid;
-- both writes complete -> consistency restored;
-- repository failure before replacement -> old PREPARING authority remains;
-- successful replacement -> complete COMPLETED authority is visible.
+No production runtime behavior is changed.
 
-## Verification
+## Evidence vocabulary
 
-GitHub Actions executed:
+- Requirement
+- Implementation statement
+- Observation
+- Evidence-backed inference
+- Assumption
+- Scoped guarantee
+- Non-guarantee
 
-mvn -B -ntp verify
+## Required distinctions
 
-Observed:
+requirement != implementation.
 
-Tests run: 68, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
+implementation != observation.
 
-## Semantic distinctions
+observation != universal guarantee.
 
-logical atomicity != speed.
+test pass != proof of all behavior.
 
-atomicity != consistency.
+source inspection != runtime proof.
 
-atomicity != durability.
+evidence-backed inference != direct observation.
 
-atomicity != concurrency control.
+assumption != fact.
 
-atomicity != distributed transaction.
+documented rule != implemented guarantee != experimentally verified behavior.
 
-transaction boundary != @Transactional annotation.
+## Freeze gate
 
-## Architectural interpretation
-
-P11 discovers the transaction requirement before introducing a transaction mechanism.
-
-The project still contains no:
-- PostgreSQL;
-- @Transactional;
-- JDBC/JPA;
-- transaction manager;
-- optimistic/pessimistic locking;
-- Saga/2PC;
-- distributed coordination.
-
-## Evidence-qualified guarantees
-
-Within the tested one-process path:
-- selected completion state+history are constructed together;
-- selected split partial representations are detected as invariant-invalid;
-- deterministic failure before current-authority replacement preserves old authority.
-
-Not guaranteed:
-- crash durability;
-- concurrent read-modify-write atomicity;
-- cross-Order atomicity;
-- distributed atomicity;
-- caller knowledge after response loss.
-
-## Next pressure
-
-Part 1.1.12 must distinguish requirement, implementation, observation and guarantee and classify every important P01-P11 correctness claim by evidence strength.
+1. P12 evidence vocabulary and claim matrix are committed;
+2. representative P01-P11 claims are reclassified with explicit scope;
+3. unsupported production-ready/concurrency/durability claims are rejected;
+4. root Maven verification executes successfully on the exact P12 evidence-bearing commit;
+5. fragile states required by P13+ remain unchanged.
