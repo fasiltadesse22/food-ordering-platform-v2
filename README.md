@@ -1,38 +1,41 @@
 # Food Ordering Platform — V8.0 Fresh-Start Evolution
 
-Inherited verified checkpoint: C1.1-P10
-Current evolution: C1.1-P11 candidate — Atomicity and Local Consistency Requirements
+Current verified checkpoint: C1.1-P11 — Atomicity and Local Consistency Requirements
+Previous checkpoint: checkpoints/C1.1-P10
 
 ## Verification
 
 mvn -B -ntp verify
 
-P11 is not frozen until GitHub Actions verifies the exact candidate.
+P11 implementation verification:
 
-## Current local atomicity model
+Tests run: 68, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
 
-Order lifecycle evolution binds:
+## Local atomicity model
+
+OrderEvolution binds:
 - next lifecycle state;
-- explaining workflow occurrence
+- explaining workflow occurrence.
 
-inside one OrderEvolution.
+One immutable invariant-checked Order is constructed before one repository replacement publishes it as current in-process authority.
 
-One new immutable invariant-checked Order is built before the repository replaces current authority.
+## Verified failure experiment
+
+If status and workflow history are split into independent writes:
+- state-first failure produces invalid partial state;
+- history-first failure produces invalid partial state.
+
+Both related changes therefore belong to one logical completion decision.
 
 ## Important non-guarantees
 
 This is NOT:
 - a database transaction;
 - durability;
-- atomic find+modify+save under concurrency;
+- atomic read-modify-write under concurrency;
 - multi-Order atomicity;
 - distributed atomicity.
-
-## Experiment
-
-P11 preserves a deliberately fragile split status/history model and injects failure after the first write in both orderings.
-
-Both partial states must violate current Order invariants.
 
 ## Current topology
 

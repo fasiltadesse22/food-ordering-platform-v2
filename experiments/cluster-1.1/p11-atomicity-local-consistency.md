@@ -4,61 +4,67 @@
 
 Which related changes must be treated as one logical decision, and what happens if a failure occurs between independently committed representations of that decision?
 
-## Hypothesis
-
-For completion:
-
-state = COMPLETED
-and
-history contains ORDER_COMPLETED
-
-belong to one logical evolution.
-
-If they are split into independent writes, a failure after the first write will expose invariant-invalid partial state regardless of write ordering.
-
-The current immutable Order path should instead construct one complete invariant-valid representation before repository publication.
-
-## Predictions
-
-1. normal completion returns a COMPLETED Order containing ORDER_COMPLETED;
-2. the original PREPARING Order remains unchanged;
-3. status-first split write + injected failure violates the COMPLETED-state invariant;
-4. history-first split write + injected failure violates the completion-fact invariant;
-5. performing both split writes restores consistency;
-6. repository failure before replacement leaves old authoritative PREPARING Order unchanged;
-7. successful replacement exposes a complete COMPLETED representation;
-8. none of these observations prove database transaction, durability, or concurrent read-modify-write atomicity.
-
-## Controlled variables
-
-The domain business decision is always completion of the same valid PREPARING Order.
-
-Only the publication/storage strategy changes:
-
-- one immutable OrderEvolution path;
-- split status/history writes;
-- repository failure before replacement.
-
 ## Execution
 
-Authoritative command:
+GitHub Actions run: 37886764685
+
+Command:
 
 mvn -B -ntp verify
 
 ## Observation
 
-Pending P11 CI.
+OrderAtomicityAndConsistencyTest:
+- tests run: 4
+- failures: 0
+- errors: 0
+- skipped: 0
+
+OrderLocalCommitBoundaryTest:
+- tests run: 2
+- failures: 0
+- errors: 0
+- skipped: 0
+
+Whole reactor:
+- tests run: 68
+- failures: 0
+- errors: 0
+- skipped: 0
+- BUILD SUCCESS
+
+## Evidence
+
+Observed:
+- normal completion constructs one COMPLETED Order containing ORDER_COMPLETED;
+- the previous PREPARING Order remains unchanged because Order is immutable;
+- status-first split write followed by injected failure leaves COMPLETED without ORDER_COMPLETED and violates the invariant;
+- history-first split write followed by injected failure leaves PREPARING with ORDER_COMPLETED and violates the invariant;
+- completing both split writes restores state/history consistency;
+- repository failure before authority replacement leaves old PREPARING authority unchanged;
+- successful repository replacement exposes a complete COMPLETED representation;
+- all inherited P01-P10 tests remain green.
+
+## Interpretation
+
+Lifecycle state and its explaining workflow occurrence belong to one logical completion decision in the current model.
+
+Splitting them into independently committed authorities creates failure windows in both write orderings.
+
+The current immutable Order + single current-reference replacement avoids that specific partial-publication problem locally.
+
+This does not prove a database transaction, durability, or atomic concurrent read-modify-write.
 
 ## Limitations
 
-Not tested:
-- real DB commit/rollback;
-- process crash durability;
-- concurrent competing writers;
-- multiple Orders/aggregates;
-- network participants;
-- response-lost retry semantics.
+Not proven:
+- real database commit/rollback;
+- process-crash durability;
+- multiple aggregate atomicity;
+- concurrent conflict protection;
+- remote participant atomicity;
+- response-loss idempotency.
 
 ## Conclusion
 
-Pending execution evidence.
+P11 establishes the logical atomicity requirement and demonstrates the failure window that future transaction mechanisms must close.
