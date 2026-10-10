@@ -1,63 +1,47 @@
 # Food Ordering Platform — V8.0 Fresh-Start Evolution
 
-Current verified checkpoint: C1.1-P16 — Duplicate Payment & External-Effect Thinking
-Previous checkpoint: checkpoints/C1.1-P15
+Inherited verified checkpoint: C1.1-P16
+Current evolution: C1.1-P17 candidate — Stale-State Decisions & Temporal Correctness
 
 ## Part type
 
-Type C — duplicate-payment / external-effect failure evolution.
+Type C — controlled stale-state / temporal-correctness failure evolution.
 
 ## Verification
 
-GitHub Actions run:
-38032714055
-
-Command:
 mvn -B -ntp verify
 
-Observed:
-Tests run: 82, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
+P17 is not frozen until the exact candidate passes CI.
 
-## Verified P16 findings
+## P17 question
 
-Repeated local payment:
-- both calls Accepted;
-- current Order contains two PAYMENT_RECORDED facts.
+A state can be authoritative when observed and stale later.
 
-Repeated test-only charge→record:
-- external charges = 2;
-- local facts = 2.
+What happens if a decision based on the earlier state is applied after authority changes?
 
-Charge commits, provider response lost, then retry:
-- external charges = 2;
-- local facts = 1.
+## Controlled evidence
 
-Local record first, provider fails before charge:
-- external charges = 0;
-- local facts = 1.
+The new stale-state harness studies:
+- modification after an intervening payment;
+- payment after an intervening cancellation;
+- fresh payment-after-cancellation as a separate policy finding;
+- a modification guard that correctly rejects fresh ACCEPTED state but passes on a stale PLACED copy.
 
-## Critical rule
+## Critical distinctions
 
-PAYMENT_RECORDED is local Order history.
+stale data != stale decision.
 
-It is not proof that an external provider:
-- charged exactly once;
-- charged at all;
-- returned a response;
-- shares one atomic commit with Order state.
+correct guard != current-state guarantee.
 
-## Architectural conclusion
+immutability != freshness.
 
-Changing call order between two independently committed authorities moves the inconsistency window.
-
-It does not remove it.
+missing business policy != stale-write corruption.
 
 ## Important boundary
 
-No idempotency mechanism, Saga, Kafka or Outbox is introduced in P16.
+No versioning, locking or PostgreSQL mechanism is added in P17.
 
-P17 next studies stale-state decisions.
+P18 next studies process crash/transient-state/durability non-guarantees.
 
 ## Current topology
 
@@ -65,7 +49,8 @@ P17 next studies stale-state decisions.
 - in-memory Order authority;
 - no PostgreSQL;
 - no @Transactional;
-- no real payment provider adapter;
+- no version field;
+- no expected-version save;
 - no messaging.
 
 See checkpoint-manifest.md and architecture/ for evidence-qualified details.

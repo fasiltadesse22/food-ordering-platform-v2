@@ -1,85 +1,65 @@
-# Checkpoint Manifest — C1.1-P16
+# Checkpoint Manifest — C1.1-P17 Candidate
 
 ## Identity
 
-- Checkpoint: C1.1-P16
-- Current status: VERIFIED AND FROZEN
-- Inherited checkpoint: C1.1-P15
-- Inherited branch: checkpoints/C1.1-P15
-- Inherited commit: 076a684d4c26cc44526dbe6b9e6a721738b07c29
-- P16 experiment commit: d6184d0ce7b31b9cf6524a025b901e28e2d94b78
-- P16 verification run: 38032714055
+- Target checkpoint: C1.1-P17
+- Current status: CANDIDATE — NOT FROZEN
+- Inherited checkpoint: C1.1-P16
+- Inherited branch: checkpoints/C1.1-P16
+- Inherited commit: ba40be8c21bab625bab215b683ba80dcb109ba23
 
 ## Engineering question
 
-What changes when a repeated command can cause an effect in another independently committed authority, where replacing local Order state cannot erase or merge that external effect?
+What happens when a decision was correct for the state we observed but is wrong, incomplete, or unsafe for the state that exists when we act?
 
 ## Part classification
 
-Type C — Duplicate-Payment / External-Effect Failure Evolution.
+Type C — Controlled Stale-State / Temporal-Correctness Failure Evolution.
 
 ## Production code/config
 
 Unchanged.
 
-PAYMENT_RECORDED remains a local learning-stage milestone, not a real payment-provider integration.
+## Controlled experiments
 
-## Verified experiments
+1. modification derived from pre-payment snapshot after payment becomes current;
+2. payment derived from pre-cancellation snapshot after cancellation becomes current;
+3. fresh payment-after-cancellation control;
+4. fresh ACCEPTED guard versus stale PLACED guard.
 
-1. repeated local recordPayment:
-   two Accepted results and two PAYMENT_RECORDED facts;
+## Required distinctions
 
-2. repeated external charge→local record:
-   external charges = 2;
-   local payment facts = 2;
+stale data != stale decision.
 
-3. external charge commits + response lost + retry:
-   external charges = 2;
-   local payment facts = 1;
+state valid when observed != state current when acted upon.
 
-4. local record→external provider failure:
-   external charges = 0;
-   local payment facts = 1.
+precondition true at read time != precondition guaranteed at commit time.
 
-## Verification
+correct guard != freshness guarantee.
 
-GitHub Actions:
-38032714055
+immutability != currentness.
 
-Observed:
-Tests run: 82, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
+concurrent overlap != required condition for stale-state failure.
 
-## Verified distinctions
-
-PAYMENT_RECORDED != external charge.
-
-provider commit != provider response observed.
-
-timeout/lost response != payment failure.
-
-same local history != exactly-once external effect.
-
-local immutable/atomic evolution != remote-effect atomicity.
-
-call ordering != distributed atomicity.
-
-reversal != compensation.
+missing business policy != stale-state corruption.
 
 ## Mechanisms deliberately absent
 
-- payment ID/idempotency key;
-- provider-side idempotency;
-- durable payment entity;
-- dedup store;
-- stored result replay;
-- distributed transaction;
-- Saga;
-- Outbox;
-- Kafka;
-- automated reconciliation.
+- version field;
+- expected-version save;
+- compare-and-set;
+- optimistic locking;
+- pessimistic locking;
+- PostgreSQL;
+- @Transactional;
+- distributed coordination.
 
-## Forward boundary
+## Freeze gate
 
-Part 1.1.17:
-Stale-State Decisions and Temporal Correctness.
+1. root Maven verification succeeds;
+2. inherited P01-P16 tests remain green;
+3. stale modification after payment can erase PAYMENT_RECORDED;
+4. stale payment after cancellation can erase ORDER_CANCELLED and resurrect PLACED;
+5. fresh payment-after-cancellation behavior is recorded separately;
+6. fresh ACCEPTED state rejects modification while stale PLACED copy permits it;
+7. no version/locking mechanism is introduced prematurely.
