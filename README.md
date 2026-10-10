@@ -1,7 +1,7 @@
 # Food Ordering Platform — V8.0 Fresh-Start Evolution
 
-Inherited verified checkpoint: C1.1-P13
-Current evolution: C1.1-P14 candidate — Cancellation / Acceptance Race
+Current verified checkpoint: C1.1-P14 — Cancellation / Acceptance Race
+Previous checkpoint: checkpoints/C1.1-P13
 
 ## Part type
 
@@ -9,11 +9,17 @@ Type C — cross-actor concurrency failure evolution.
 
 ## Verification
 
+GitHub Actions run:
+38027340494
+
+Command:
 mvn -B -ntp verify
 
-P14 is not frozen until the exact candidate passes CI.
+Observed:
+Tests run: 75, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
 
-## P14 conflict
+## Verified P14 conflict
 
 From PLACED:
 
@@ -23,9 +29,13 @@ PLACED → CANCELLED
 Restaurant ACCEPT:
 PLACED → ACCEPTED
 
-Sequentially, whichever transition becomes authoritative first makes the other illegal.
+Serial execution:
+only the first authoritative transition succeeds.
 
-Under the preserved shared-snapshot race, both can derive a locally valid successor before either observes the other's save.
+Controlled shared-snapshot concurrency:
+both actors can receive Accepted;
+last save determines current authority;
+reversing only save order reverses the surviving outcome.
 
 ## Critical distinction
 
@@ -35,13 +45,18 @@ How do we ensure one coherent winner?
 Business policy:
 Which actor should win under which business conditions?
 
-P14 does not silently answer the second question with implementation timing.
+The current implementation answers neither correctly by design.
 
-## Current accidental behavior
+It merely exhibits accidental last-write-wins timing.
 
-Unconditional last-write-wins.
+## Business policy remains open
 
-This is not approved business policy.
+Candidate alternatives:
+- first authoritative commit wins;
+- cancellation priority before a defined cutoff;
+- acceptance priority after fulfillment commitment.
+
+No policy is implemented in P14.
 
 ## Current topology
 

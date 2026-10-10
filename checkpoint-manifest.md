@@ -1,12 +1,14 @@
-# Checkpoint Manifest — C1.1-P14 Candidate
+# Checkpoint Manifest — C1.1-P14
 
 ## Identity
 
-- Target checkpoint: C1.1-P14
-- Current status: CANDIDATE — NOT FROZEN
+- Checkpoint: C1.1-P14
+- Current status: VERIFIED AND FROZEN
 - Inherited checkpoint: C1.1-P13
 - Inherited branch: checkpoints/C1.1-P13
 - Inherited commit: 2f0bb04cc9975aec232aa5ea67eb32dd793789f2
+- P14 experiment commit: ea9581114b21b4331c8776681f5311e7ffaa3175
+- P14 verification run: 38027340494
 
 ## Engineering question
 
@@ -27,15 +29,33 @@ find
 
 path remains preserved.
 
-## Controlled experiment
+## Verified serial controls
 
-Serial controls:
-- cancel then accept;
-- accept then cancel.
+Cancel first:
+- cancellation Accepted;
+- later acceptance rejected;
+- final authority CANCELLED.
 
-Shared-snapshot schedules:
-- CANCELLED save first, ACCEPTED save last;
-- ACCEPTED save first, CANCELLED save last.
+Accept first:
+- acceptance Accepted;
+- later cancellation rejected;
+- final authority ACCEPTED.
+
+## Verified shared-snapshot race
+
+Schedule A:
+- both capture PLACED;
+- both return Accepted;
+- CANCELLED saves first;
+- ACCEPTED saves last;
+- final authority ACCEPTED.
+
+Schedule B:
+- both capture PLACED;
+- both return Accepted;
+- ACCEPTED saves first;
+- CANCELLED saves last;
+- final authority CANCELLED.
 
 ## Minimal correctness requirement
 
@@ -50,7 +70,28 @@ Documented alternatives:
 - cancellation priority before a defined cutoff;
 - acceptance priority after a fulfillment commitment.
 
-Current last-write-wins is explicitly NOT approved policy.
+Current last-write-wins is explicitly NOT approved business policy.
+
+## Verification
+
+GitHub Actions:
+38027340494
+
+Observed:
+Tests run: 75, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+
+## Verified distinctions
+
+concurrency-control mechanism != business winner policy.
+
+actor-local success != guaranteed surviving authority.
+
+request intent time != authoritative commit order.
+
+valid individual successor != valid concurrent acknowledgement history.
+
+current last-write-wins behavior != justified conflict policy.
 
 ## Mechanisms deliberately absent
 
@@ -64,12 +105,6 @@ Current last-write-wins is explicitly NOT approved policy.
 - distributed lock;
 - timestamp-winner rule.
 
-## Freeze gate
+## Next pressure
 
-1. root Maven verification succeeds;
-2. inherited P01-P13 tests remain green;
-3. both serial controls allow one success and reject the second;
-4. both shared-snapshot schedules acknowledge both actors;
-5. reversing save order reverses surviving authority;
-6. participant-knowledge and policy artifacts are recorded;
-7. no winner policy/concurrency mechanism is added without evidence.
+Part 1.1.15 studies repeated commands and replay semantics without conflating duplicates with cross-actor conflicts.
