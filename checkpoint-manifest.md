@@ -1,103 +1,53 @@
-# Checkpoint Manifest — C1.1-P19 / C1.1-FINAL
+# Checkpoint Manifest — C1.2-P01 Candidate
 
 ## Identity
-
-- Part checkpoint: C1.1-P19
-- Cluster checkpoint: C1.1-FINAL
-- Status: VERIFIED AND FROZEN subject to exact final metadata-commit CI gate
-- Inherited checkpoint: C1.1-P18
-- Inherited branch: checkpoints/C1.1-P18
-- Inherited commit: 8644f76bcf77e23941f4747c3527a950a6352762
-- P19 synthesis candidate: a2f1360dc0a52327300b561fa3900bae60ae1f6f
-- P19 candidate verification: 38035664742
-- P19 evidence-bearing commit: 015b6c2c465796882c914d4c5bee53d9266468f9
-- P19 evidence verification: 38035744146
-
-## Part title
-
-Correctness Synthesis, Diagnosis, Design Defense and Cluster Freeze.
+- Part: C1.2-P01
+- Cluster: 1.2 — Entities, Value Objects, Aggregates & Consistency Boundaries
+- Title: Inherited Correctness Pressure and Consistency-Boundary Discovery
+- Evolution: Type A — analysis/evidence documentation only
+- Inherited frozen branch: `checkpoints/C1.1-FINAL`
+- Inherited frozen commit: `d76cfdf585e19afeef21b9d522351541c5cbc07f`
+- Status of this authored tree: CANDIDATE; must not be called VERIFIED/FROZEN until CI succeeds for exact resulting commit and checkpoint branch is created.
 
 ## Engineering question
+Which existing correctness requirements demand a shared consistency boundary?
+Prediction: selected lifecycle status/history invariants imply one coherent local Order decision boundary,
+while independent Customer, Restaurant and external payment truth do not enter that boundary merely by reference.
 
-Can we prove, explain, diagnose and defend what the current system guarantees—and what it does not?
+## Changes justified
+- Scenario/state-dependency map in `architecture/scenarios/C1.2-P01-consistency-boundary-discovery.md`.
+- Provisional ADR-0020 under `architecture/adr/`.
+- Inherited-experiment plan under `experiments/cluster-1.2/`.
+- P01 evidence ledger under `architecture/evidence/`.
+- This manifest.
+No production Java, Maven config, database, tests, CI, networking, or application topology changes.
 
-## Project evolution type
+## Verification gate
+Existing GitHub workflow must run for exact candidate commit:
+`mvn -B -ntp verify`
+`experiments/cluster-1.1/p18-process-restart-durability.sh`
+The C1.1-FINAL baseline was verified by workflow run 38035876593; **that cannot substitute for P01's own commit verification**.
+P01 candidate CI result is intentionally left to the GitHub Actions record (no invented run ID or PASS assertion).
+Freeze `checkpoints/C1.2-P01` only after both required steps are green on the exact commit.
+The action run linked to the commit and the checkpoint branch SHA are the final external verification record.
 
-Type A — synthesis/freeze.
+## Preserved known fragilities
+- Concurrent mutually exclusive decisions from P13/P14;
+- stale replacement and state resurrection from P17;
+- in-memory process loss from P18;
+- repeated command and external payment effect issues from P15/P16.
+No mitigation is introduced or claimed.
 
-## Production code/config
+## Evidence language
+Observed (inherited): specified CI execution and recorded failure experiments.
+Structurally demonstrated: selected invariant checks, immutable successors, unconditional in-memory save.
+Inferred: Order-centered immediate consistency boundary is plausible.
+Not guaranteed: durable authority, conflict detection, comprehensive history correctness, cross-authority atomicity or idempotency.
 
-Unchanged.
+## ADR and deferred mechanisms
+ADR-0020 records provisional candidate only. PostgreSQL, schema migrations, DB constraints,
+database transactions, optimistic/pessimistic locks, Kafka, Redis, Saga, Outbox, Inbox, CQRS,
+Event Sourcing, distributed locks, service split and Cloud/Kubernetes deployment remain deferred.
 
-No new production mechanism is introduced.
-
-## Verified behavior gates
-
-Both P19 synthesis and evidence-bearing commits executed:
-
-mvn -B -ntp verify
-
-Observed:
-Tests run: 86
-Failures: 0
-Errors: 0
-Skipped: 0
-BUILD SUCCESS
-
-Both also reran the P18 real process experiment:
-- CANCELLED / HTTP 200 before SIGKILL;
-- same OrderId / HTTP 404 after fresh JVM startup.
-
-## Final outputs
-
-- final state-machine/workflow map;
-- invariant/contract catalog;
-- conflict/failure matrix;
-- guarantee/non-guarantee matrix;
-- final evidence ledger;
-- ADR-0019;
-- diagnosis/design-defense package;
-- Cluster 1.2 handoff;
-- P19 exit audit.
-
-## Unresolved policies deliberately preserved
-
-- definitive payment sequencing;
-- payment authorization versus capture;
-- payment-after-cancellation policy;
-- modification-after-payment policy;
-- cancellation semantics after acceptance/preparation;
-- real refund completion semantics;
-- real payment-provider identity/idempotency/reconciliation.
-
-## Mechanisms now evidence-justified for later evaluation
-
-- durable relational Order persistence;
-- one local transaction around aggregate-consistent state;
-- selected relational constraints;
-- authority-level stale/concurrent write detection, with the exact tactic derived in Cluster 1.2.
-
-## Mechanisms still not justified
-
-- microservice split;
-- Kafka;
-- Redis;
-- Saga;
-- Outbox;
-- CQRS;
-- Event Sourcing;
-- distributed locks;
-- database-per-service;
-- Kubernetes/AWS runtime architecture.
-
-## Branch freeze rule
-
-After this final metadata-only commit passes the same root + P18 gates, create:
-- checkpoints/C1.1-P19
-- checkpoints/C1.1-FINAL
-
-both pointing to that exact commit.
-
-## Next enabled cluster
-
-Cluster 1.2 — Entities, Value Objects, Aggregates & Consistency Boundaries.
+## Next part
+C1.2-P02 — Required State, Authority, Identity and Lifecycle Continuity.
