@@ -1,7 +1,7 @@
 # Food Ordering Platform — V8.0 Fresh-Start Evolution
 
-Inherited verified checkpoint: C1.1-P17
-Current evolution: C1.1-P18 candidate — Process Crash, Transient State & Durability Non-Guarantees
+Current verified checkpoint: C1.1-P18 — Process Crash, Transient State & Durability Non-Guarantees
+Previous checkpoint: checkpoints/C1.1-P17
 
 ## Part type
 
@@ -9,45 +9,32 @@ Type C — process-loss / durability failure evolution.
 
 ## Verification
 
+GitHub Actions:
+38035108764
+
 Root:
 mvn -B -ntp verify
+
+Observed:
+Tests run: 86, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
 
 Runtime durability experiment:
 experiments/cluster-1.1/p18-process-restart-durability.sh
 
-P18 is not frozen until both checks execute successfully in CI.
+Observed:
+- process A served the selected Order as CANCELLED;
+- process A was terminated with SIGKILL;
+- process B started successfully from the same jar;
+- GET of the same OrderId returned 404.
 
-## P18 question
+## Critical conclusion
 
-What remains of acknowledged Order state after the JVM that owns the current in-memory authority disappears?
+The current InMemoryOrderRepository is authoritative while its JVM is alive.
 
-## Current authority
+It is not a durable recovery source across JVM replacement.
 
-InMemoryOrderRepository:
-- authoritative inside the running application;
-- ConcurrentHashMap-backed;
-- no durable recovery source.
-
-## Controlled experiment
-
-Process A:
-place → cancel → GET = CANCELLED.
-
-SIGKILL process A.
-
-Process B:
-start same jar → GET same OrderId.
-
-Expected:
-404.
-
-## Critical distinctions
-
-authoritative != durable.
-
-successful response != durable commit.
-
-restart of compute != recovery of business state.
+A successful application restart restores compute, not acknowledged Order state.
 
 ## Important boundary
 

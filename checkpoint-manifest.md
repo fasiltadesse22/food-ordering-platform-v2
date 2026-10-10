@@ -1,12 +1,14 @@
-# Checkpoint Manifest — C1.1-P18 Candidate
+# Checkpoint Manifest — C1.1-P18
 
 ## Identity
 
-- Target checkpoint: C1.1-P18
-- Current status: CANDIDATE — NOT FROZEN
+- Checkpoint: C1.1-P18
+- Current status: VERIFIED AND FROZEN
 - Inherited checkpoint: C1.1-P17
 - Inherited branch: checkpoints/C1.1-P17
 - Inherited commit: 880300e71e44ebf501adac5c6a18aab7389aea5d
+- P18 experiment commit: 9d462abdc089e51d8cb7abd014226b3fc999ce1c
+- P18 verification run: 38035108764
 
 ## Engineering question
 
@@ -20,38 +22,46 @@ Type C — Process-Loss / Durability Failure Evolution.
 
 Production application behavior remains unchanged.
 
-CI gains a real two-process restart experiment.
+CI now executes the real two-process restart experiment after the root Maven build.
 
-## Controlled runtime experiment
+## Verified root gate
+
+mvn -B -ntp verify
+
+Observed:
+Tests run: 86
+Failures: 0
+Errors: 0
+Skipped: 0
+BUILD SUCCESS
+
+## Verified runtime experiment
 
 Process A:
-- start real Spring Boot jar;
-- place Order over HTTP;
-- GET confirms PLACED;
-- cancel Order over HTTP;
-- response confirms CANCELLED.
+- placed and read an Order;
+- cancelled it;
+- observed OrderId e6dbb2bd-0a9c-47c0-ad9b-f57681b4b0be as CANCELLED over HTTP 200.
 
 Failure:
-- terminate process A with SIGKILL.
+- process A PID 2504 terminated with SIGKILL.
 
 Process B:
-- start the same jar fresh;
-- GET the same OrderId;
-- expected HTTP 404.
+- same application artifact started in a fresh JVM;
+- GET same OrderId returned HTTP 404.
 
-## Required distinctions
+## Verified distinctions
 
 authoritative now != durable.
 
-save != persistent commit.
+saveCurrent != persistent durable commit.
 
-successful response != restart durability.
+successful HTTP response != restart durability.
 
-thread-safe map != persistence.
+ConcurrentHashMap thread safety != persistence.
 
 process recovery != business-state recovery.
 
-availability != durability.
+application availability != state durability.
 
 durability != backup.
 
@@ -60,25 +70,21 @@ HA != DR.
 ## Mechanisms deliberately absent
 
 - PostgreSQL;
-- database transaction semantics;
+- database transaction/crash recovery;
 - optimistic locking;
 - durable cache/store;
 - replication;
-- backups;
+- backup/restore;
 - Kafka;
 - Saga;
 - Outbox;
-- distributed transaction;
+- distributed transactions;
 - Kubernetes/AWS HA mechanisms.
 
-## Freeze gate
+## Forward boundary
 
-1. mvn -B -ntp verify succeeds;
-2. inherited P01-P17 tests remain green;
-3. real process A starts and serves HTTP;
-4. Order is acknowledged and observed as CANCELLED before crash;
-5. process A is terminated with SIGKILL;
-6. fresh process B starts from the same artifact;
-7. GET for prior OrderId returns 404;
-8. exact runtime evidence is recorded;
-9. evidence-bearing commit re-verifies before checkpoint branch creation.
+Part 1.1.19:
+Correctness Synthesis, Diagnosis, Design Defense and Cluster Freeze.
+
+Cluster 1.2:
+durable relational persistence and aggregate/consistency-boundary evolution.
