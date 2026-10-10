@@ -1,57 +1,56 @@
 # Food Ordering Platform — V8.0 Fresh-Start Evolution
 
-Current verified checkpoint: C1.1-P15 — Repeated Commands & Replay Semantics
-Previous checkpoint: checkpoints/C1.1-P14
+Inherited verified checkpoint: C1.1-P15
+Current evolution: C1.1-P16 candidate — Duplicate Payment & External-Effect Thinking
 
 ## Part type
 
-Type C — repeated-command / replay failure semantics.
+Type C — duplicate-payment / external-effect failure evolution.
 
 ## Verification
 
-GitHub Actions run:
-38032248389
-
-Command:
 mvn -B -ntp verify
 
-Observed:
-Tests run: 78, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
+P16 is not frozen until the exact candidate passes CI.
 
-## Verified replay behavior
+## Critical distinction
 
-Sequential cancellation retry:
-- first call Accepted(CANCELLED);
-- retry ILLEGAL_TRANSITION;
-- final state contains one cancellation effect;
-- original result is not replayed.
+PAYMENT_RECORDED is a local Order workflow milestone.
 
-Concurrent identical cancellation:
-- both calls can execute and return Accepted;
-- two saves occur;
-- current Order still converges to one CANCELLED representation.
+It is not proof that an external payment authority:
+- charged exactly once;
+- charged at all;
+- returned a response;
+- can be atomically committed with Order state.
 
-Therefore:
-same final state does not prove duplicate detection or at-most-once execution.
+## P16 controlled external-effect harness
 
-Repeated refund:
-- second request is suppressed by REFUND_ALREADY_REQUESTED;
-- original Accepted result is not replayed.
+Test-only PaymentAuthority models an independently committed charge.
 
-## Current replay architecture
+It is not a production provider integration.
 
-No logical command ID/idempotency key exists.
+Expected failure windows:
+- duplicate charge and duplicate local fact;
+- charge commits but response is lost, retry charges again;
+- local PAYMENT_RECORDED exists while provider failed before charge.
 
-The server cannot explicitly distinguish:
-- retry of one logical command;
-- a new same-looking command.
+## Architectural conclusion under test
+
+Ordering two independently committed operations does not make them atomic.
+
+Changing:
+external → local
+
+to:
+local → external
+
+moves the inconsistency window instead of eliminating it.
 
 ## Important boundary
 
-P15 does not implement the later full idempotency mechanism.
+No idempotency mechanism, Saga, Kafka or Outbox is introduced in P16.
 
-Duplicate payment is reserved for P16.
+P17 next studies stale-state decisions.
 
 ## Current topology
 
@@ -59,7 +58,7 @@ Duplicate payment is reserved for P16.
 - in-memory Order authority;
 - no PostgreSQL;
 - no @Transactional;
-- no durable idempotency store;
+- no real payment provider adapter;
 - no messaging.
 
 See checkpoint-manifest.md and architecture/ for evidence-qualified details.

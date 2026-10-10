@@ -1,107 +1,67 @@
-# Checkpoint Manifest — C1.1-P15
+# Checkpoint Manifest — C1.1-P16 Candidate
 
 ## Identity
 
-- Checkpoint: C1.1-P15
-- Current status: VERIFIED AND FROZEN
-- Inherited checkpoint: C1.1-P14
-- Inherited branch: checkpoints/C1.1-P14
-- Inherited commit: 4b512248e93609bc7e1529223ebbbf4d5b11489b
-- P15 experiment commit: 12b96146a399f7d61d9639b7c153d4072f0a2b73
-- P15 verification run: 38032248389
+- Target checkpoint: C1.1-P16
+- Current status: CANDIDATE — NOT FROZEN
+- Inherited checkpoint: C1.1-P15
+- Inherited branch: checkpoints/C1.1-P15
+- Inherited commit: 076a684d4c26cc44526dbe6b9e6a721738b07c29
 
 ## Engineering question
 
-When the same logical business intent appears again, what should repeated execution mean, how can the system know it is a replay, and which business effects/results must remain stable?
+What changes when a repeated command can cause an effect in another independently committed authority, where replacing local Order state cannot erase or merge that external effect?
 
 ## Part classification
 
-Type C — Repeated-Command / Replay Failure Semantics.
+Type C — Duplicate-Payment / External-Effect Failure Evolution.
 
 ## Production code/config
 
 Unchanged.
 
-## Verified experiments
+PAYMENT_RECORDED remains a local learning-stage milestone, not a real payment-provider integration.
 
-### Sequential cancellation replay
+## Controlled experiments
 
-First:
-Accepted(CANCELLED)
+1. repeated local recordPayment;
+2. test-only external charge→local record repeated twice;
+3. external charge commits but response is lost, followed by retry;
+4. local record→external charge with provider failure before effect.
 
-Retry:
-Rejected(ILLEGAL_TRANSITION)
+## Required distinctions
 
-Final:
-CANCELLED with one ORDER_CANCELLED occurrence.
+PAYMENT_RECORDED != external charge.
 
-### Concurrent identical cancellations
+provider commit != provider response observed.
 
-Both capture:
-PLACED
+timeout/lost response != payment failure.
 
-Both return:
-Accepted(CANCELLED)
+same final local state != exactly-once external effect.
 
-Repository:
-2 reads
-2 saves
+local transaction/atomic object != remote-effect atomicity.
 
-Final:
-CANCELLED with one current ORDER_CANCELLED occurrence.
-
-### Repeated refund request
-
-First:
-Accepted
-
-Second:
-REFUND_ALREADY_REQUESTED
-
-Final:
-one REFUND_REQUESTED occurrence.
-
-## Verification
-
-GitHub Actions:
-38032248389
-
-Observed:
-Tests run: 78, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
-
-## Verified distinctions
-
-duplicate request != identified replay.
-
-effect convergence != duplicate detection.
-
-duplicate suppression != result replay.
-
-same final state != at-most-once execution.
-
-same payload != proof of same logical command.
-
-local state convergence != external-effect idempotence.
+reversal != compensation.
 
 ## Mechanisms deliberately absent
 
-- command ID/idempotency key;
-- deduplication store;
-- stored original result;
-- atomic effect + dedup record;
-- retention/expiry;
-- same-key payload fingerprinting;
-- restart-safe replay;
-- distributed duplicate suppression.
+- payment ID/idempotency key;
+- provider-side idempotency;
+- durable payment entity;
+- dedup store;
+- stored result replay;
+- distributed transaction;
+- Saga;
+- Outbox;
+- Kafka;
+- automated reconciliation.
 
-## Forward boundary
+## Freeze gate
 
-Duplicate payment is deliberately reserved for Part 1.1.16.
-
-The later dedicated idempotency cluster owns the full mechanism.
-
-## Next pressure
-
-Part 1.1.16:
-Duplicate Payment and External-Effect Thinking.
+1. root Maven verification succeeds;
+2. inherited P01-P15 tests remain green;
+3. repeated local payment produces two PAYMENT_RECORDED facts;
+4. repeated charge→record produces two modeled external charges;
+5. ambiguous first provider response + retry produces external charges=2 and local payment facts=1;
+6. record→charge provider failure produces external charges=0 and local payment facts=1;
+7. no production idempotency/distributed-payment mechanism is added prematurely.
