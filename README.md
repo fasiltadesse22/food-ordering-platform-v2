@@ -1,63 +1,60 @@
 # Food Ordering Platform — V8.0 Fresh-Start Evolution
 
-Current verified checkpoint: C1.1-P17 — Stale-State Decisions & Temporal Correctness
-Previous checkpoint: checkpoints/C1.1-P16
+Inherited verified checkpoint: C1.1-P17
+Current evolution: C1.1-P18 candidate — Process Crash, Transient State & Durability Non-Guarantees
 
 ## Part type
 
-Type C — controlled stale-state / temporal-correctness failure evolution.
+Type C — process-loss / durability failure evolution.
 
 ## Verification
 
-GitHub Actions run:
-38034398881
-
-Command:
+Root:
 mvn -B -ntp verify
 
-Observed:
-Tests run: 86, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
+Runtime durability experiment:
+experiments/cluster-1.1/p18-process-restart-durability.sh
 
-## Verified P17 findings
+P18 is not frozen until both checks execute successfully in CI.
 
-Stale modification after payment:
-- newer PAYMENT_RECORDED can be erased.
+## P18 question
 
-Stale payment after cancellation:
-- newer cancellation can be erased;
-- lifecycle can be resurrected from CANCELLED to PLACED.
+What remains of acknowledged Order state after the JVM that owns the current in-memory authority disappears?
 
-Fresh payment after cancellation:
-- currently allowed by the payment milestone semantics;
-- remains CANCELLED and retains both workflow facts;
-- this is a separate policy gap, not stale corruption.
+## Current authority
 
-Fresh vs stale modification:
-- current ACCEPTED Order correctly rejects modification;
-- stale PLACED copy passes the same guard;
-- stale save can erase acceptance.
+InMemoryOrderRepository:
+- authoritative inside the running application;
+- ConcurrentHashMap-backed;
+- no durable recovery source.
 
-## Critical rule
+## Controlled experiment
 
-A guard being correct for the object it evaluates does not prove the object is still authoritative.
+Process A:
+place → cancel → GET = CANCELLED.
 
-Immutability does not imply freshness.
+SIGKILL process A.
+
+Process B:
+start same jar → GET same OrderId.
+
+Expected:
+404.
+
+## Critical distinctions
+
+authoritative != durable.
+
+successful response != durable commit.
+
+restart of compute != recovery of business state.
 
 ## Important boundary
 
-No versioning, locking or PostgreSQL mechanism is added in P17.
+P18 proves the durability failure before fixing it.
 
-P18 next studies process crash/transient-state/durability non-guarantees.
+PostgreSQL remains deferred to Cluster 1.2.
 
-## Current topology
-
-- one Java 21 / Spring Boot deployable;
-- in-memory Order authority;
-- no PostgreSQL;
-- no @Transactional;
-- no version field;
-- no expected-version save;
-- no messaging.
+P19 next synthesizes and freezes Cluster 1.1.
 
 See checkpoint-manifest.md and architecture/ for evidence-qualified details.

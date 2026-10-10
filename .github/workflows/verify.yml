@@ -21,3 +21,6 @@ jobs:
 
       - name: Verify root reactor
         run: mvn -B -ntp verify
+
+      - name: Verify P18 process restart durability experiment
+        run: experiments/cluster-1.1/p18-process-restart-durability.sh

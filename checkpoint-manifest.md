@@ -1,83 +1,84 @@
-# Checkpoint Manifest — C1.1-P17
+# Checkpoint Manifest — C1.1-P18 Candidate
 
 ## Identity
 
-- Checkpoint: C1.1-P17
-- Current status: VERIFIED AND FROZEN
-- Inherited checkpoint: C1.1-P16
-- Inherited branch: checkpoints/C1.1-P16
-- Inherited commit: ba40be8c21bab625bab215b683ba80dcb109ba23
-- P17 experiment commit: 8d1366bc82034d56be9035b9bd86bcb93eca658c
-- P17 verification run: 38034398881
+- Target checkpoint: C1.1-P18
+- Current status: CANDIDATE — NOT FROZEN
+- Inherited checkpoint: C1.1-P17
+- Inherited branch: checkpoints/C1.1-P17
+- Inherited commit: 880300e71e44ebf501adac5c6a18aab7389aea5d
 
 ## Engineering question
 
-What happens when a decision was correct for the state we observed but is wrong, incomplete, or unsafe for the state that exists when we act?
+What happens to our correctness claims when the process that currently owns Order state disappears?
 
 ## Part classification
 
-Type C — Controlled Stale-State / Temporal-Correctness Failure Evolution.
+Type C — Process-Loss / Durability Failure Evolution.
 
 ## Production code/config
 
-Unchanged.
+Production application behavior remains unchanged.
 
-## Verified experiments
+CI gains a real two-process restart experiment.
 
-1. stale pre-payment snapshot modified after payment:
-   PAYMENT_RECORDED erased;
+## Controlled runtime experiment
 
-2. stale pre-cancellation snapshot paid after cancellation:
-   ORDER_CANCELLED erased;
-   lifecycle resurrected from CANCELLED to PLACED;
+Process A:
+- start real Spring Boot jar;
+- place Order over HTTP;
+- GET confirms PLACED;
+- cancel Order over HTTP;
+- response confirms CANCELLED.
 
-3. fresh payment after cancellation:
-   status remains CANCELLED;
-   ORDER_CANCELLED + PAYMENT_RECORDED coexist;
-   recorded separately as current policy behavior;
+Failure:
+- terminate process A with SIGKILL.
 
-4. fresh ACCEPTED versus stale PLACED modification:
-   fresh guard rejects;
-   stale guard passes;
-   stale save erases acceptance and restores PLACED.
+Process B:
+- start the same jar fresh;
+- GET the same OrderId;
+- expected HTTP 404.
 
-## Verification
+## Required distinctions
 
-GitHub Actions:
-38034398881
+authoritative now != durable.
 
-Observed:
-Tests run: 86, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
+save != persistent commit.
 
-## Verified distinctions
+successful response != restart durability.
 
-stale data != stale decision.
+thread-safe map != persistence.
 
-state valid when observed != state current when acted upon.
+process recovery != business-state recovery.
 
-precondition true at read time != precondition guaranteed at commit time.
+availability != durability.
 
-correct guard != freshness guarantee.
+durability != backup.
 
-immutability != currentness.
-
-simultaneous threads != required condition for stale-state failure.
-
-missing business policy != stale-write corruption.
+HA != DR.
 
 ## Mechanisms deliberately absent
 
-- version field;
-- expected-version save;
-- compare-and-set;
-- optimistic locking;
-- pessimistic locking;
 - PostgreSQL;
-- @Transactional;
-- distributed coordination.
+- database transaction semantics;
+- optimistic locking;
+- durable cache/store;
+- replication;
+- backups;
+- Kafka;
+- Saga;
+- Outbox;
+- distributed transaction;
+- Kubernetes/AWS HA mechanisms.
 
-## Forward boundary
+## Freeze gate
 
-Part 1.1.18:
-Process Crash, Transient State and Durability Non-Guarantees.
+1. mvn -B -ntp verify succeeds;
+2. inherited P01-P17 tests remain green;
+3. real process A starts and serves HTTP;
+4. Order is acknowledged and observed as CANCELLED before crash;
+5. process A is terminated with SIGKILL;
+6. fresh process B starts from the same artifact;
+7. GET for prior OrderId returns 404;
+8. exact runtime evidence is recorded;
+9. evidence-bearing commit re-verifies before checkpoint branch creation.
