@@ -1,12 +1,14 @@
-# Checkpoint Manifest — C1.1-P13 Candidate
+# Checkpoint Manifest — C1.1-P13
 
 ## Identity
 
-- Target checkpoint: C1.1-P13
-- Current status: CANDIDATE — NOT FROZEN
+- Checkpoint: C1.1-P13
+- Current status: VERIFIED AND FROZEN
 - Inherited checkpoint: C1.1-P12
 - Inherited branch: checkpoints/C1.1-P12
 - Inherited commit: 0d81069ea1761c2e88825bff6d3dcd6c803f4879
+- P13 experiment commit: 198ded2738a9a68192cd0530c52224ef41611e6f
+- P13 verification run: 38026585059
 
 ## Engineering question
 
@@ -25,48 +27,65 @@ find
 → evolve
 → save
 
-path is preserved.
+path remains preserved.
 
-## Controlled experiment
+## Verified experiment
 
-Restaurant ACCEPT versus Restaurant REJECT.
+Sequential:
+- ACCEPT succeeds;
+- fresh REJECT observes ACCEPTED and is rejected.
 
-Sequential control:
-second decision must observe fresh authority and reject.
+Concurrent schedule A:
+- both capture PLACED;
+- both return Accepted;
+- ACCEPT saves first;
+- REJECT saves last;
+- final authority = REJECTED.
 
-Concurrent schedules:
-both operations capture the same PLACED snapshot before either save.
+Concurrent schedule B:
+- both capture PLACED;
+- both return Accepted;
+- REJECT saves first;
+- ACCEPT saves last;
+- final authority = ACCEPTED.
 
-Schedule A:
-ACCEPT saves first, REJECT saves last.
+## Verification
 
-Schedule B:
-REJECT saves first, ACCEPT saves last.
+GitHub Actions:
+38026585059
 
-## Expected failure property
+Observed:
+Tests run: 71, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
 
-Both calls can report Accepted even though only the last successor remains current authority.
+## Verified distinctions
 
-Final state changes when only save ordering is reversed.
+locally legal decision != globally correct concurrent history.
+
+immutable successor != protected stale replacement.
+
+thread-safe map operation != atomic business read-modify-write.
+
+Accepted application result != guaranteed durable/current surviving decision.
+
+scheduler-dependent race testing != deterministic interleaving testing.
 
 ## Mechanisms deliberately absent
 
 - synchronized;
-- locks;
-- versions;
+- lock;
+- version field;
 - compare-and-set;
 - optimistic locking;
 - pessimistic locking;
 - PostgreSQL;
 - @Transactional;
-- distributed locks.
+- distributed lock.
 
-## Freeze gate
+## Evidence-qualified non-guarantee
 
-1. root Maven verification succeeds;
-2. inherited P01-P12 tests remain green;
-3. sequential control rejects the second conflicting action;
-4. shared-snapshot concurrent schedule makes both calls return Accepted;
-5. final authority follows deterministic last-save order;
-6. reverse save order reverses surviving decision;
-7. no concurrency protection is added prematurely.
+Conflicting Order updates are not currently serialized or conflict-detected across find→evolve→save.
+
+## Next pressure
+
+Part 1.1.14 applies the now-proven conflict mechanism to Customer CANCEL versus Restaurant ACCEPT.

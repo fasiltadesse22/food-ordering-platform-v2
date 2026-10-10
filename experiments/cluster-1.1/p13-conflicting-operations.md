@@ -4,85 +4,131 @@
 
 Can two operations that are individually legal from PLACED both return Accepted when they concurrently validate against the same Order snapshot, even though sequential execution would reject the second operation?
 
-## Hypothesis
-
-The current find→evolve→save workflow has no version/compare-and-set protection.
-
-If ACCEPT and REJECT both capture the same PLACED Order before either saves:
-- both domain decisions will be locally valid;
-- both application calls can return Accepted;
-- last save wins;
-- reversing save order reverses final authority.
-
-## Prediction
-
-Sequential control:
-- ACCEPT succeeds;
-- subsequent REJECT reads ACCEPTED and is rejected as ILLEGAL_TRANSITION.
-
-Concurrent schedule A:
-- both read PLACED;
-- ACCEPT saves first;
-- REJECT saves second;
-- both results are Accepted;
-- final authority is REJECTED;
-- acceptance occurrence is absent from final authority.
-
-Concurrent schedule B:
-- both read PLACED;
-- REJECT saves first;
-- ACCEPT saves second;
-- both results are Accepted;
-- final authority is ACCEPTED;
-- rejection occurrence is absent from final authority.
-
-## Setup
-
-Use the real OrderWorkflowService.
-
-Use a test-only CoordinatedConflictRepository implementing the real OrderRepository port.
-
-The test repository:
-- captures the current Order before its read barrier;
-- waits until two reads captured that same snapshot;
-- deterministically orders saves using a latch.
-
-Production repository behavior remains unchanged.
-
-## Controlled variable
-
-Only successor save ordering changes between the two concurrent experiments.
-
 ## Execution
 
-Authoritative command:
+GitHub Actions run:
+38026585059
+
+Command:
 
 mvn -B -ntp verify
 
-## Observation
+## Observed test result
 
-Pending P13 CI.
+OrderConcurrentConflictWindowTest:
+- tests run: 3
+- failures: 0
+- errors: 0
+- skipped: 0
+
+Whole reactor:
+- tests run: 71
+- failures: 0
+- errors: 0
+- skipped: 0
+- BUILD SUCCESS
+
+## Sequential control — observed
+
+ACCEPT executed first against PLACED and returned Accepted.
+
+REJECT then performed a fresh authoritative read, observed ACCEPTED, and returned:
+ILLEGAL_TRANSITION.
+
+Final authority:
+ACCEPTED
+
+Final workflow:
+RESTAURANT_ACCEPTED
+
+Interpretation:
+the existing state machine correctly prevents the second incompatible transition when it observes current state.
+
+## Concurrent schedule A — observed
+
+The coordinated repository forced both operations to capture:
+PLACED
+
+before either save.
+
+Local successors:
+A = ACCEPTED + RESTAURANT_ACCEPTED
+B = REJECTED + RESTAURANT_REJECTED
+
+Forced save order:
+ACCEPTED
+then
+REJECTED
+
+Both application calls returned:
+Accepted
+
+Final authority:
+REJECTED
+
+Final current workflow:
+RESTAURANT_REJECTED
+
+RESTAURANT_ACCEPTED was absent from final authority.
+
+## Concurrent schedule B — observed
+
+Only save ordering was reversed.
+
+Both operations again captured:
+PLACED
+
+Forced save order:
+REJECTED
+then
+ACCEPTED
+
+Both application calls returned:
+Accepted
+
+Final authority:
+ACCEPTED
+
+Final current workflow:
+RESTAURANT_ACCEPTED
+
+RESTAURANT_REJECTED was absent from final authority.
 
 ## Evidence interpretation
 
-A passing deterministic conflict test will establish that the current business workflow permits the selected stale-snapshot interleavings under the test harness.
+Executed and verified:
+- sequential fresh-state execution rejects the incompatible second transition;
+- both concurrent operations can make locally valid decisions from the same captured PLACED state;
+- both calls can report Accepted;
+- the last complete successor written becomes current authority;
+- reversing save order reverses surviving current state/history.
 
-It will not establish:
-- probability/frequency under real traffic;
-- behavior across multiple JVMs;
-- database isolation behavior;
-- the correct locking/versioning mechanism.
+Evidence-backed inference:
+the defect is in the unprotected authoritative read→decision→replacement interval, not in the lifecycle transition definitions themselves.
 
-## Limitations
+Not measured:
+- real-world probability;
+- throughput impact;
+- contention frequency;
+- multi-JVM behavior;
+- database isolation behavior.
 
-P13 deliberately does not:
-- execute customer cancellation against restaurant acceptance;
-- add concurrency protection;
-- measure contention;
-- introduce PostgreSQL.
+## Why this is deterministic
 
-P14 owns the exact cancellation/acceptance business race.
+The test does not depend on scheduler luck.
 
-## Conclusion
+A CountDownLatch ensures both operations capture the same Order before either proceeds.
 
-Pending execution evidence.
+A second latch forces the selected first save to complete before the other save.
+
+Therefore the tested interleavings are controlled inputs, not accidental timing.
+
+## Preserved fragility
+
+No production concurrency protection was added.
+
+The real in-memory repository remains last-write-wins across the application-level find→evolve→save sequence.
+
+## Next
+
+P14 applies this exact conflict mechanism to the required Customer CANCEL versus Restaurant ACCEPT race.

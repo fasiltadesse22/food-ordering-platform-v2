@@ -1,7 +1,7 @@
 # Food Ordering Platform — V8.0 Fresh-Start Evolution
 
-Inherited verified checkpoint: C1.1-P12
-Current evolution: C1.1-P13 candidate — Conflicting Operations and Concurrency Windows
+Current verified checkpoint: C1.1-P13 — Conflicting Operations and Concurrency Windows
+Previous checkpoint: checkpoints/C1.1-P12
 
 ## Part type
 
@@ -9,42 +9,49 @@ Type C — controlled concurrency failure evolution.
 
 ## Verification
 
+GitHub Actions run:
+38026585059
+
+Command:
 mvn -B -ntp verify
 
-P13 is not frozen until the exact candidate executes successfully in CI.
+Observed:
+Tests run: 71, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
 
-## Current concurrency shape
+## Verified concurrency failure
 
-OrderWorkflowService:
+Sequential fresh-state behavior:
+- ACCEPT from PLACED succeeds;
+- REJECT then observes ACCEPTED and is rejected.
+
+Controlled concurrency:
+- ACCEPT and REJECT can both capture the same PLACED Order;
+- both can return Accepted;
+- last save becomes current authority;
+- reversing only save order reverses the surviving decision.
+
+## Root mechanism
+
+Current application workflow:
 
 find current Order
-→ make decision against returned immutable snapshot
-→ save new immutable successor
+→ decide against returned immutable snapshot
+→ save complete successor
 
-InMemoryOrderRepository:
+No expected-version comparison protects the interval between read and save.
 
-ConcurrentHashMap get/put
-
-There is no version comparison across the read-decide-write sequence.
-
-## P13 experiment
-
-ACCEPT and REJECT are both valid from PLACED.
-
-The deterministic test forces both operations to capture the same PLACED snapshot, then controls save ordering.
-
-Expected vulnerable behavior:
-- both callers can receive Accepted;
-- last save becomes current authority;
-- reversing save order reverses final authority.
+ConcurrentHashMap protects individual map operations, not the full business transaction.
 
 ## Important scope
 
-P13 intentionally does not fix the race.
+P13 proves selected deterministic interleavings.
 
-It preserves the fragile state for later comparison.
+It does not measure race frequency under real traffic and does not establish database/multi-JVM behavior.
 
-P14 will apply the same concurrency mechanism to the required customer-cancellation versus restaurant-acceptance race.
+No fix is added yet.
+
+P14 will apply the same mechanism to customer cancellation versus restaurant acceptance.
 
 ## Current topology
 
