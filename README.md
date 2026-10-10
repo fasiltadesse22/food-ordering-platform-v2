@@ -1,9 +1,9 @@
 # Food Ordering Platform — V8.0 Fresh-Start Evolution
 
-Current stage: C1.1-P19 / C1.1-FINAL evidence-bearing freeze candidate
+Current stage: C1.1-P19 / C1.1-FINAL final freeze annotation
 Inherited verified checkpoint: C1.1-P18
 
-## P19
+## Cluster 1.1 final part
 
 Correctness Synthesis, Diagnosis, Design Defense and Cluster Freeze.
 
@@ -15,46 +15,46 @@ Can we prove, explain, diagnose and defend what the current system guarantees—
 
 Type A only.
 
-Production behavior remains unchanged.
+Production behavior is unchanged.
 
-The final Cluster 1.1 review package is under:
+Final Cluster 1.1 review package:
 architecture/cluster-1.1/
 
-## Candidate verification
+## Verified P19 evidence
 
-P19 candidate commit:
+Synthesis candidate:
 a2f1360dc0a52327300b561fa3900bae60ae1f6f
+GitHub Actions 38035664742
 
-GitHub Actions:
-38035664742
+Evidence-bearing commit:
+015b6c2c465796882c914d4c5bee53d9266468f9
+GitHub Actions 38035744146
 
-Observed:
+Both observed:
 - 86 Maven tests passed;
-- 0 failures;
-- 0 errors;
 - BUILD SUCCESS;
 - P18 real JVM-replacement experiment reproduced CANCELLED-before-kill / 404-after-restart.
 
-## Final baseline architecture
+## Final C1.1 architecture
 
 - one Java 21 / Spring Boot deployable;
 - in-memory Order authority;
 - executable lifecycle/guard/invariant model;
-- preserved concurrency, replay, external-effect, stale-state and durability failure evidence.
+- evidence-backed failure artifacts for concurrency, replay, external payment effects, stale state and durability.
 
-No PostgreSQL or later distributed mechanisms are added in Cluster 1.1.
+No PostgreSQL or later distributed mechanisms have been introduced.
 
 ## Cluster 1.2 handoff
 
-Cluster 1.2 must inherit the final verified C1.1 commit exactly.
+Cluster 1.2 must inherit C1.1-FINAL exactly.
 
-It may then evolve:
-- durable relational persistence;
-- aggregate/consistency boundaries;
-- local transactions;
+It may then derive/evolve:
+- entities/value objects/aggregate boundary;
+- durable PostgreSQL persistence;
+- local transaction boundary;
 - selected DB constraints;
 - optimistic concurrency implications;
 
-only from the evidence preserved here.
+from the evidence preserved here.
 
-The evidence-bearing commit still requires its own CI pass before C1.1-P19 and C1.1-FINAL branches are created.
+The final metadata-only freeze commit is reverified before immutable checkpoint branches are created.
