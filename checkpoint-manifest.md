@@ -1,90 +1,55 @@
-# Checkpoint Manifest — C1.1-P18
+# Checkpoint Manifest — C1.1-P19 / C1.1-FINAL Candidate
 
 ## Identity
 
-- Checkpoint: C1.1-P18
-- Current status: VERIFIED AND FROZEN
-- Inherited checkpoint: C1.1-P17
-- Inherited branch: checkpoints/C1.1-P17
-- Inherited commit: 880300e71e44ebf501adac5c6a18aab7389aea5d
-- P18 experiment commit: 9d462abdc089e51d8cb7abd014226b3fc999ce1c
-- P18 verification run: 38035108764
+- Target part checkpoint: C1.1-P19
+- Target cluster checkpoint: C1.1-FINAL
+- Current status: CANDIDATE — NOT FROZEN
+- Inherited checkpoint: C1.1-P18
+- Inherited branch: checkpoints/C1.1-P18
+- Inherited commit: 8644f76bcf77e23941f4747c3527a950a6352762
+
+## Part title
+
+Correctness Synthesis, Diagnosis, Design Defense and Cluster Freeze.
 
 ## Engineering question
 
-What happens to our correctness claims when the process that currently owns Order state disappears?
+Can we prove, explain, diagnose and defend what the current system guarantees—and what it does not?
 
-## Part classification
+## Project evolution type
 
-Type C — Process-Loss / Durability Failure Evolution.
+Type A — synthesis/freeze.
 
 ## Production code/config
 
-Production application behavior remains unchanged.
+Unchanged.
 
-CI now executes the real two-process restart experiment after the root Maven build.
+No new production mechanism is introduced.
 
-## Verified root gate
+## Final required outputs
 
-mvn -B -ntp verify
+- final state-machine/workflow map;
+- invariant/contract catalog;
+- conflict/failure matrix;
+- guarantee/non-guarantee matrix;
+- evidence ledger;
+- ADR-0019;
+- diagnosis/design-defense package;
+- Cluster 1.2 handoff.
 
-Observed:
-Tests run: 86
-Failures: 0
-Errors: 0
-Skipped: 0
-BUILD SUCCESS
+## Cluster exit gate
 
-## Verified runtime experiment
+1. root Maven build/tests execute successfully;
+2. P18 real two-process durability experiment executes successfully;
+3. all P01-P18 semantics remain the inherited behavior;
+4. final artifacts distinguish requirement / implementation / observation / inference / guarantee / non-guarantee;
+5. at least one simpler alternative and over-engineering rejection remain explicit;
+6. unresolved business policies are not silently invented;
+7. no PostgreSQL/versioning/idempotency/distributed mechanism is introduced;
+8. evidence-bearing commit is independently reverified;
+9. create checkpoints/C1.1-P19 and checkpoints/C1.1-FINAL from the exact verified commit.
 
-Process A:
-- placed and read an Order;
-- cancelled it;
-- observed OrderId e6dbb2bd-0a9c-47c0-ad9b-f57681b4b0be as CANCELLED over HTTP 200.
+## Next enabled cluster
 
-Failure:
-- process A PID 2504 terminated with SIGKILL.
-
-Process B:
-- same application artifact started in a fresh JVM;
-- GET same OrderId returned HTTP 404.
-
-## Verified distinctions
-
-authoritative now != durable.
-
-saveCurrent != persistent durable commit.
-
-successful HTTP response != restart durability.
-
-ConcurrentHashMap thread safety != persistence.
-
-process recovery != business-state recovery.
-
-application availability != state durability.
-
-durability != backup.
-
-HA != DR.
-
-## Mechanisms deliberately absent
-
-- PostgreSQL;
-- database transaction/crash recovery;
-- optimistic locking;
-- durable cache/store;
-- replication;
-- backup/restore;
-- Kafka;
-- Saga;
-- Outbox;
-- distributed transactions;
-- Kubernetes/AWS HA mechanisms.
-
-## Forward boundary
-
-Part 1.1.19:
-Correctness Synthesis, Diagnosis, Design Defense and Cluster Freeze.
-
-Cluster 1.2:
-durable relational persistence and aggregate/consistency-boundary evolution.
+Cluster 1.2 — Entities, Value Objects, Aggregates & Consistency Boundaries.
