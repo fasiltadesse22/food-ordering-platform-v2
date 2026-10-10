@@ -1,12 +1,14 @@
-# Checkpoint Manifest — C1.1-P17 Candidate
+# Checkpoint Manifest — C1.1-P17
 
 ## Identity
 
-- Target checkpoint: C1.1-P17
-- Current status: CANDIDATE — NOT FROZEN
+- Checkpoint: C1.1-P17
+- Current status: VERIFIED AND FROZEN
 - Inherited checkpoint: C1.1-P16
 - Inherited branch: checkpoints/C1.1-P16
 - Inherited commit: ba40be8c21bab625bab215b683ba80dcb109ba23
+- P17 experiment commit: 8d1366bc82034d56be9035b9bd86bcb93eca658c
+- P17 verification run: 38034398881
 
 ## Engineering question
 
@@ -20,14 +22,35 @@ Type C — Controlled Stale-State / Temporal-Correctness Failure Evolution.
 
 Unchanged.
 
-## Controlled experiments
+## Verified experiments
 
-1. modification derived from pre-payment snapshot after payment becomes current;
-2. payment derived from pre-cancellation snapshot after cancellation becomes current;
-3. fresh payment-after-cancellation control;
-4. fresh ACCEPTED guard versus stale PLACED guard.
+1. stale pre-payment snapshot modified after payment:
+   PAYMENT_RECORDED erased;
 
-## Required distinctions
+2. stale pre-cancellation snapshot paid after cancellation:
+   ORDER_CANCELLED erased;
+   lifecycle resurrected from CANCELLED to PLACED;
+
+3. fresh payment after cancellation:
+   status remains CANCELLED;
+   ORDER_CANCELLED + PAYMENT_RECORDED coexist;
+   recorded separately as current policy behavior;
+
+4. fresh ACCEPTED versus stale PLACED modification:
+   fresh guard rejects;
+   stale guard passes;
+   stale save erases acceptance and restores PLACED.
+
+## Verification
+
+GitHub Actions:
+38034398881
+
+Observed:
+Tests run: 86, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+
+## Verified distinctions
 
 stale data != stale decision.
 
@@ -39,9 +62,9 @@ correct guard != freshness guarantee.
 
 immutability != currentness.
 
-concurrent overlap != required condition for stale-state failure.
+simultaneous threads != required condition for stale-state failure.
 
-missing business policy != stale-state corruption.
+missing business policy != stale-write corruption.
 
 ## Mechanisms deliberately absent
 
@@ -54,12 +77,7 @@ missing business policy != stale-state corruption.
 - @Transactional;
 - distributed coordination.
 
-## Freeze gate
+## Forward boundary
 
-1. root Maven verification succeeds;
-2. inherited P01-P16 tests remain green;
-3. stale modification after payment can erase PAYMENT_RECORDED;
-4. stale payment after cancellation can erase ORDER_CANCELLED and resurrect PLACED;
-5. fresh payment-after-cancellation behavior is recorded separately;
-6. fresh ACCEPTED state rejects modification while stale PLACED copy permits it;
-7. no version/locking mechanism is introduced prematurely.
+Part 1.1.18:
+Process Crash, Transient State and Durability Non-Guarantees.

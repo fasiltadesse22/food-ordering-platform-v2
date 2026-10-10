@@ -1,7 +1,7 @@
 # Food Ordering Platform — V8.0 Fresh-Start Evolution
 
-Inherited verified checkpoint: C1.1-P16
-Current evolution: C1.1-P17 candidate — Stale-State Decisions & Temporal Correctness
+Current verified checkpoint: C1.1-P17 — Stale-State Decisions & Temporal Correctness
+Previous checkpoint: checkpoints/C1.1-P16
 
 ## Part type
 
@@ -9,33 +9,40 @@ Type C — controlled stale-state / temporal-correctness failure evolution.
 
 ## Verification
 
+GitHub Actions run:
+38034398881
+
+Command:
 mvn -B -ntp verify
 
-P17 is not frozen until the exact candidate passes CI.
+Observed:
+Tests run: 86, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
 
-## P17 question
+## Verified P17 findings
 
-A state can be authoritative when observed and stale later.
+Stale modification after payment:
+- newer PAYMENT_RECORDED can be erased.
 
-What happens if a decision based on the earlier state is applied after authority changes?
+Stale payment after cancellation:
+- newer cancellation can be erased;
+- lifecycle can be resurrected from CANCELLED to PLACED.
 
-## Controlled evidence
+Fresh payment after cancellation:
+- currently allowed by the payment milestone semantics;
+- remains CANCELLED and retains both workflow facts;
+- this is a separate policy gap, not stale corruption.
 
-The new stale-state harness studies:
-- modification after an intervening payment;
-- payment after an intervening cancellation;
-- fresh payment-after-cancellation as a separate policy finding;
-- a modification guard that correctly rejects fresh ACCEPTED state but passes on a stale PLACED copy.
+Fresh vs stale modification:
+- current ACCEPTED Order correctly rejects modification;
+- stale PLACED copy passes the same guard;
+- stale save can erase acceptance.
 
-## Critical distinctions
+## Critical rule
 
-stale data != stale decision.
+A guard being correct for the object it evaluates does not prove the object is still authoritative.
 
-correct guard != current-state guarantee.
-
-immutability != freshness.
-
-missing business policy != stale-write corruption.
+Immutability does not imply freshness.
 
 ## Important boundary
 
