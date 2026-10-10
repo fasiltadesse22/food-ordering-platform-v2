@@ -1,60 +1,58 @@
 # Food Ordering Platform — V8.0 Fresh-Start Evolution
 
-Current verified checkpoint: C1.1-P12 — Requirement, Implementation, Observation & Guarantee
-Previous checkpoint: checkpoints/C1.1-P11
+Inherited verified checkpoint: C1.1-P12
+Current evolution: C1.1-P13 candidate — Conflicting Operations and Concurrency Windows
 
 ## Part type
 
-Type A — conceptual + evidence evolution.
-
-P12 intentionally does not change production application behavior.
+Type C — controlled concurrency failure evolution.
 
 ## Verification
 
-GitHub Actions run:
-37902228783
-
-Command:
 mvn -B -ntp verify
 
-Observed:
-Tests run: 68, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
+P13 is not frozen until the exact candidate executes successfully in CI.
 
-## Evidence vocabulary
+## Current concurrency shape
 
-The project distinguishes:
-- requirement;
-- implementation;
-- observation;
-- evidence-backed inference;
-- assumption;
-- scoped guarantee/non-guarantee.
+OrderWorkflowService:
 
-## Critical rule
+find current Order
+→ make decision against returned immutable snapshot
+→ save new immutable successor
 
-A passing test is an observation about an exercised scenario.
+InMemoryOrderRepository:
 
-It is not, by itself, proof of every possible behavior.
+ConcurrentHashMap get/put
 
-A scoped guarantee must identify:
-- property;
-- boundary;
-- enforcing mechanism;
-- assumptions;
-- evidence;
-- exclusions.
+There is no version comparison across the read-decide-write sequence.
 
-## Current unchanged topology
+## P13 experiment
+
+ACCEPT and REJECT are both valid from PLACED.
+
+The deterministic test forces both operations to capture the same PLACED snapshot, then controls save ordering.
+
+Expected vulnerable behavior:
+- both callers can receive Accepted;
+- last save becomes current authority;
+- reversing save order reverses final authority.
+
+## Important scope
+
+P13 intentionally does not fix the race.
+
+It preserves the fragile state for later comparison.
+
+P14 will apply the same concurrency mechanism to the required customer-cancellation versus restaurant-acceptance race.
+
+## Current topology
 
 - one Java 21 / Spring Boot deployable;
 - in-memory Order authority;
 - no PostgreSQL;
 - no @Transactional;
-- no messaging;
-- no concurrency control.
+- no locking/versioning;
+- no messaging.
 
-See:
-- architecture/evidence/evidence-language.md
-- architecture/evidence/C1.1-P12-claim-matrix.md
-- architecture/adr/ADR-0012-evidence-language-and-claim-strength.md
+See checkpoint-manifest.md and architecture/ for evidence-qualified details.

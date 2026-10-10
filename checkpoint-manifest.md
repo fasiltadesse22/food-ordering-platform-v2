@@ -1,86 +1,72 @@
-# Checkpoint Manifest — C1.1-P12
+# Checkpoint Manifest — C1.1-P13 Candidate
 
 ## Identity
 
-- Checkpoint: C1.1-P12
-- Current status: VERIFIED AND FROZEN
-- Inherited checkpoint: C1.1-P11
-- Inherited branch: checkpoints/C1.1-P11
-- Inherited commit: f68c1fa3b23075e112a15a5bf3828bb083a48711
-- P12 evidence-evolution commit: 5dd192a2ffaad7d5fb1151c3799c9459f6da89d5
-- P12 verification run: 37902228783
+- Target checkpoint: C1.1-P13
+- Current status: CANDIDATE — NOT FROZEN
+- Inherited checkpoint: C1.1-P12
+- Inherited branch: checkpoints/C1.1-P12
+- Inherited commit: 0d81069ea1761c2e88825bff6d3dcd6c803f4879
 
 ## Engineering question
 
-What exactly do we know, how do we know it, and how strong a claim are we justified in making?
+How can two individually legal business decisions conflict when both are made from the same previously authoritative state?
 
 ## Part classification
 
-Type A — Conceptual + Evidence Evolution.
+Type C — Controlled Concurrency Failure Evolution.
 
-No production runtime behavior changed.
+## Production code/config
 
-## Evidence vocabulary
+Unchanged.
 
-- Requirement
-- Implementation statement
-- Observation
-- Evidence-backed inference
-- Assumption
-- Scoped guarantee
-- Non-guarantee
+The current vulnerable:
+find
+→ evolve
+→ save
 
-## Required distinctions
+path is preserved.
 
-requirement != implementation.
+## Controlled experiment
 
-implementation != observation.
+Restaurant ACCEPT versus Restaurant REJECT.
 
-observation != universal guarantee.
+Sequential control:
+second decision must observe fresh authority and reject.
 
-test pass != proof of all behavior.
+Concurrent schedules:
+both operations capture the same PLACED snapshot before either save.
 
-source inspection != runtime proof.
+Schedule A:
+ACCEPT saves first, REJECT saves last.
 
-evidence-backed inference != direct observation.
+Schedule B:
+REJECT saves first, ACCEPT saves last.
 
-assumption != fact.
+## Expected failure property
 
-documented rule != implemented guarantee != experimentally verified behavior.
+Both calls can report Accepted even though only the last successor remains current authority.
 
-## Verification
-
-GitHub Actions executed:
-mvn -B -ntp verify
-
-Observed:
-Tests run: 68, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
-
-## Precise interpretation
-
-This execution verifies that the exact P12 checkpoint retains the inherited automated behavior exercised by the 68-test suite.
-
-It does not establish:
-- universal correctness;
-- concurrency safety;
-- durability;
-- production scale;
-- high availability;
-- security completeness;
-- future database guarantees.
+Final state changes when only save ordering is reversed.
 
 ## Mechanisms deliberately absent
 
+- synchronized;
+- locks;
+- versions;
+- compare-and-set;
+- optimistic locking;
+- pessimistic locking;
 - PostgreSQL;
 - @Transactional;
-- locking;
-- optimistic concurrency;
-- retries;
-- Kafka;
-- Redis;
-- distributed coordination.
+- distributed locks.
 
-## Next pressure
+## Freeze gate
 
-Part 1.1.13 begins conflicting-operation and concurrency-window experiments. Every conclusion must use the P12 claim vocabulary.
+1. root Maven verification succeeds;
+2. inherited P01-P12 tests remain green;
+3. sequential control rejects the second conflicting action;
+4. shared-snapshot concurrent schedule makes both calls return Accepted;
+5. final authority follows deterministic last-save order;
+6. reverse save order reverses surviving decision;
+7. no concurrency protection is added prematurely.
