@@ -4,101 +4,116 @@
 
 Can repeated payment execution create duplicate local facts and duplicate independently committed external effects, and can failure ordering make local and external payment truths diverge?
 
-## Hypothesis
-
-Current recordPayment has no duplicate guard or logical command identity.
-
-A naive external payment flow that combines a provider effect with local PAYMENT_RECORDED using ordinary sequential calls cannot make the two authorities atomic.
-
-## Predictions
-
-### Repeated local payment
-
-Two recordPayment calls:
-- both Accepted;
-- current Order contains two PAYMENT_RECORDED occurrences.
-
-### Charge then record, repeated
-
-Two executions:
-- external charges = 2;
-- local PAYMENT_RECORDED = 2.
-
-### External charge commits, response lost, then retry
-
-First attempt:
-- external charge #1 commits;
-- provider response is lost;
-- local PAYMENT_RECORDED is absent.
-
-Retry:
-- external charge #2 commits;
-- local PAYMENT_RECORDED is recorded once.
-
-Final:
-- external charges = 2;
-- local payment facts = 1.
-
-### Record then charge, provider fails
-
-Local PAYMENT_RECORDED succeeds.
-
-External provider fails before charge.
-
-Final:
-- external charges = 0;
-- local payment facts = 1.
-
-## Setup
-
-Use current real OrderWorkflowService.
-
-Use test-only PaymentAuthority implementations solely as controlled independent effect authorities.
-
-No production payment integration or idempotency mechanism is added.
-
-## Controlled variables
-
-The harness controls:
-- whether external effect commits;
-- whether response is returned;
-- whether local recording happens before/after the external call;
-- number of repeated attempts.
-
 ## Execution
 
-Authoritative command:
+GitHub Actions run:
+38032714055
+
+Command:
 
 mvn -B -ntp verify
 
-## Observation
+## Observed test result
 
-Pending P16 CI.
+OrderDuplicatePaymentExternalEffectTest:
+- tests run: 4
+- failures: 0
+- errors: 0
+- skipped: 0
 
-## Evidence interpretation
+Whole reactor:
+- tests run: 82
+- failures: 0
+- errors: 0
+- skipped: 0
+- BUILD SUCCESS
 
-If predictions hold:
-- local PAYMENT_RECORDED must not be treated as proof of one external charge;
-- repeated local state behavior cannot establish external-effect idempotency;
-- unknown provider outcome makes blind retry unsafe;
-- reversing call order changes which inconsistency is possible but does not create atomicity.
+## Repeated local payment — observed
+
+Two recordPayment calls:
+- first returned Accepted;
+- second returned Accepted.
+
+Final current Order:
+- PAYMENT_RECORDED count = 2.
+
+Interpretation:
+current local payment milestone has no duplicate guard.
+
+## Charge then record repeated twice — observed
+
+Two complete coordinator executions:
+- external committed charges = 2;
+- local PAYMENT_RECORDED count = 2.
+
+Interpretation:
+without logical payment identity/idempotency, repeated execution duplicates both modeled external effect and local fact.
+
+## External charge commits, response lost, then retry — observed
+
+First attempt:
+- modeled external authority committed charge #1;
+- response was then lost by the test authority;
+- coordinator aborted before local recordPayment;
+- local PAYMENT_RECORDED count remained 0.
+
+Retry:
+- external authority committed charge #2;
+- response returned;
+- local recordPayment succeeded once.
+
+Final:
+- external committed charges = 2;
+- local PAYMENT_RECORDED count = 1.
+
+Interpretation:
+the first provider failure seen by the application was an unknown outcome, not proof of no charge.
+
+Blind retry multiplied the external effect.
+
+## Record then charge, provider fails before effect — observed
+
+Local recordPayment:
+Accepted.
+
+Provider:
+failed before charge.
+
+Final:
+- external committed charges = 0;
+- local PAYMENT_RECORDED count = 1.
+
+Interpretation:
+reversing call order creates the opposite inconsistency window.
+
+## Core evidence
+
+Executed and verified:
+- duplicate local payment facts are currently permitted;
+- naive repeated external payment execution can charge twice;
+- provider response loss after external commit can produce external=2/local=1 after retry;
+- local-first ordering can produce external=0/local=1.
+
+Evidence-backed inference:
+there is no safe sequential ordering of two independently committed authorities that makes them atomic.
+
+The inconsistency window moves when ordering changes.
 
 ## Limitations
 
-The PaymentAuthority is a deterministic test double.
+The modeled PaymentAuthority is a deterministic test double.
 
-P16 does not establish:
-- real provider network behavior;
-- provider-side idempotency semantics;
-- durable payment identifiers;
+Not established:
+- real provider network semantics;
+- provider-side idempotency;
+- durable provider transaction identity;
+- distributed transaction guarantees;
 - reconciliation;
-- refund correctness;
-- distributed transaction behavior.
+- refund/compensation correctness;
+- retry policy under real latency/failure.
 
 ## Forward boundary
 
-Do not introduce the full later idempotency mechanism here.
+P16 does not introduce the full idempotency solution.
 
-Do not introduce Saga/Kafka/Outbox.
-
-P17 next studies stale-state decisions.
+P17 next studies stale-state decisions and temporal correctness.

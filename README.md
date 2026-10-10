@@ -1,7 +1,7 @@
 # Food Ordering Platform — V8.0 Fresh-Start Evolution
 
-Inherited verified checkpoint: C1.1-P15
-Current evolution: C1.1-P16 candidate — Duplicate Payment & External-Effect Thinking
+Current verified checkpoint: C1.1-P16 — Duplicate Payment & External-Effect Thinking
+Previous checkpoint: checkpoints/C1.1-P15
 
 ## Part type
 
@@ -9,42 +9,49 @@ Type C — duplicate-payment / external-effect failure evolution.
 
 ## Verification
 
+GitHub Actions run:
+38032714055
+
+Command:
 mvn -B -ntp verify
 
-P16 is not frozen until the exact candidate passes CI.
+Observed:
+Tests run: 82, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
 
-## Critical distinction
+## Verified P16 findings
 
-PAYMENT_RECORDED is a local Order workflow milestone.
+Repeated local payment:
+- both calls Accepted;
+- current Order contains two PAYMENT_RECORDED facts.
 
-It is not proof that an external payment authority:
+Repeated test-only charge→record:
+- external charges = 2;
+- local facts = 2.
+
+Charge commits, provider response lost, then retry:
+- external charges = 2;
+- local facts = 1.
+
+Local record first, provider fails before charge:
+- external charges = 0;
+- local facts = 1.
+
+## Critical rule
+
+PAYMENT_RECORDED is local Order history.
+
+It is not proof that an external provider:
 - charged exactly once;
 - charged at all;
 - returned a response;
-- can be atomically committed with Order state.
+- shares one atomic commit with Order state.
 
-## P16 controlled external-effect harness
+## Architectural conclusion
 
-Test-only PaymentAuthority models an independently committed charge.
+Changing call order between two independently committed authorities moves the inconsistency window.
 
-It is not a production provider integration.
-
-Expected failure windows:
-- duplicate charge and duplicate local fact;
-- charge commits but response is lost, retry charges again;
-- local PAYMENT_RECORDED exists while provider failed before charge.
-
-## Architectural conclusion under test
-
-Ordering two independently committed operations does not make them atomic.
-
-Changing:
-external → local
-
-to:
-local → external
-
-moves the inconsistency window instead of eliminating it.
+It does not remove it.
 
 ## Important boundary
 
