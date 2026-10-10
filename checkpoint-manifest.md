@@ -1,12 +1,14 @@
-# Checkpoint Manifest — C1.1-P15 Candidate
+# Checkpoint Manifest — C1.1-P15
 
 ## Identity
 
-- Target checkpoint: C1.1-P15
-- Current status: CANDIDATE — NOT FROZEN
+- Checkpoint: C1.1-P15
+- Current status: VERIFIED AND FROZEN
 - Inherited checkpoint: C1.1-P14
 - Inherited branch: checkpoints/C1.1-P14
 - Inherited commit: 4b512248e93609bc7e1529223ebbbf4d5b11489b
+- P15 experiment commit: 12b96146a399f7d61d9639b7c153d4072f0a2b73
+- P15 verification run: 38032248389
 
 ## Engineering question
 
@@ -20,11 +22,57 @@ Type C — Repeated-Command / Replay Failure Semantics.
 
 Unchanged.
 
-## Required distinctions
+## Verified experiments
 
-duplicate request != same logical command.
+### Sequential cancellation replay
 
-same payload != same logical command.
+First:
+Accepted(CANCELLED)
+
+Retry:
+Rejected(ILLEGAL_TRANSITION)
+
+Final:
+CANCELLED with one ORDER_CANCELLED occurrence.
+
+### Concurrent identical cancellations
+
+Both capture:
+PLACED
+
+Both return:
+Accepted(CANCELLED)
+
+Repository:
+2 reads
+2 saves
+
+Final:
+CANCELLED with one current ORDER_CANCELLED occurrence.
+
+### Repeated refund request
+
+First:
+Accepted
+
+Second:
+REFUND_ALREADY_REQUESTED
+
+Final:
+one REFUND_REQUESTED occurrence.
+
+## Verification
+
+GitHub Actions:
+38032248389
+
+Observed:
+Tests run: 78, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+
+## Verified distinctions
+
+duplicate request != identified replay.
 
 effect convergence != duplicate detection.
 
@@ -32,34 +80,28 @@ duplicate suppression != result replay.
 
 same final state != at-most-once execution.
 
-correlation ID != idempotency key.
+same payload != proof of same logical command.
 
-local state idempotence != external side-effect idempotence.
+local state convergence != external-effect idempotence.
 
-## Controlled experiments
+## Mechanisms deliberately absent
 
-1. lost cancellation success response followed by retry;
-2. concurrent identical cancellations;
-3. repeated refund request.
-
-## Intentionally deferred
-
-- duplicate payment execution: P16;
-- general command/idempotency key model;
-- durable dedup/result storage;
-- key expiry;
-- same-key different-payload detection;
+- command ID/idempotency key;
+- deduplication store;
+- stored original result;
+- atomic effect + dedup record;
+- retention/expiry;
+- same-key payload fingerprinting;
 - restart-safe replay;
-- external exactly-once claims.
+- distributed duplicate suppression.
 
-The complete idempotency mechanism belongs to later roadmap work.
+## Forward boundary
 
-## Freeze gate
+Duplicate payment is deliberately reserved for Part 1.1.16.
 
-1. root Maven verification succeeds;
-2. inherited P01-P14 tests remain green;
-3. sequential cancellation retry returns a different outcome while final state remains CANCELLED;
-4. concurrent identical cancellation performs two saves and both calls can return Accepted;
-5. final current Order still contains one cancellation occurrence;
-6. repeated refund is suppressed without replaying original success;
-7. no duplicate-payment experiment or idempotency mechanism is introduced prematurely.
+The later dedicated idempotency cluster owns the full mechanism.
+
+## Next pressure
+
+Part 1.1.16:
+Duplicate Payment and External-Effect Thinking.

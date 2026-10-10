@@ -4,42 +4,39 @@
 
 How does the current application behave when the same cancellation/refund intent is submitted again, and does convergent final state imply duplicate detection or replay-safe semantics?
 
-## Hypothesis
+## Execution
 
-The current application has no general logical command identity.
+GitHub Actions run:
+38032248389
 
-Therefore:
-- sequential cancellation retry will be interpreted as a new CANCEL against CANCELLED and be rejected;
-- concurrent identical cancellations can both execute and return Accepted;
-- final cancellation state can converge even without deduplication;
-- refund replay is explicitly suppressed by domain history but will return rejection rather than the original result.
+Command:
 
-## Predictions
+mvn -B -ntp verify
 
-### Lost cancellation response + sequential retry
+## Observed test result
+
+OrderRepeatedCommandReplayTest:
+- tests run: 3
+- failures: 0
+- errors: 0
+- skipped: 0
+
+Whole reactor:
+- tests run: 78
+- failures: 0
+- errors: 0
+- skipped: 0
+- BUILD SUCCESS
+
+## Lost cancellation success + sequential retry — observed
 
 First CANCEL:
 Accepted(CANCELLED)
 
+The test deliberately treats the first success response as lost and submits the same logical cancellation intent again.
+
 Retry:
-ILLEGAL_TRANSITION
-
-Final authority:
-CANCELLED
-
-Cancellation occurrences:
-1
-
-### Concurrent identical cancellation
-
-Both capture:
-PLACED
-
-Both:
-return Accepted(CANCELLED)
-
-Repository saves:
-2
+Rejected(ILLEGAL_TRANSITION)
 
 Final authority:
 CANCELLED
@@ -47,59 +44,97 @@ CANCELLED
 Current cancellation occurrences:
 1
 
+Repository saves:
+2 total:
+- initial PLACED seed;
+- first successful cancellation.
+
+The retry was rejected before another save.
+
 Interpretation:
-the final representation converges, but duplicate execution was not prevented.
+the selected state/effect converges, but the original success result is not replayed and the server has no logical command identity proving the retry is the same command.
 
-### Repeated refund request
+## Concurrent identical cancellation — observed
 
-Precondition:
-PAYMENT_RECORDED
-then CANCELLED
+A coordinated repository forced both calls to capture:
+PLACED
 
-First refund request:
-Accepted
+Both calls returned:
+Accepted(CANCELLED)
 
-Second:
-REFUND_ALREADY_REQUESTED
+Observed repository behavior:
+- reads: 2
+- saves: 2
 
-Final refund occurrences:
+Final current authority:
+CANCELLED
+
+Final current cancellation occurrences:
 1
 
-## Controlled variables
+Interpretation:
+both duplicate executions actually ran and saved.
 
-Use the current real OrderWorkflowService.
+The final Order looks like one cancellation because each immutable successor was independently derived from the same original PLACED snapshot and one complete successor replaced the other.
 
-Use:
-- a counting repository for sequential replay;
-- a shared-read barrier repository for concurrent identical cancellation;
-- the real in-memory repository for refund replay.
+Therefore:
+same final state != at-most-once execution.
 
-No production idempotency mechanism is added.
+## Repeated refund request — observed
 
-## Execution
+Setup:
+PAYMENT_RECORDED
+→ CANCELLED
 
-Authoritative command:
+First REFUND_REQUESTED:
+Accepted(CANCELLED)
 
-mvn -B -ntp verify
+Second REFUND_REQUESTED:
+Rejected(REFUND_ALREADY_REQUESTED)
 
-## Observation
+Final workflow:
+PAYMENT_RECORDED
+ORDER_CANCELLED
+REFUND_REQUESTED
 
-Pending P15 CI.
+Refund occurrences:
+1
+
+Interpretation:
+a domain prior-effect guard suppresses another selected refund milestone.
+
+It does not replay the first Accepted result and does not provide a general logical-command deduplication mechanism.
 
 ## Evidence interpretation
 
-A successful P15 experiment would establish selected replay behavior of the current checkpoint.
+Executed and verified:
+- sequential cancellation retry changes result from Accepted to ILLEGAL_TRANSITION while final state remains CANCELLED;
+- concurrent identical cancellations can both execute, save and return Accepted;
+- current final Order can converge to one cancellation occurrence despite two saves;
+- repeated refund request is explicitly suppressed without replaying original success.
 
-It would not establish:
+Structurally demonstrated:
+- OrderWorkflowUseCase has no command ID/idempotency-key parameter;
+- current application cannot distinguish retry of one logical command from a new same-looking attempt using explicit command identity.
+
+Evidence-backed inference:
+- state-machine terminality may make selected local transitions effect-convergent without providing duplicate detection;
+- final-state inspection is insufficient to prove at-most-once execution;
+- external independently committed effects require separate idempotency reasoning.
+
+## Limitations
+
+Not established:
 - durable deduplication;
-- logical request identity;
-- at-most-once execution;
-- exactly-once external effects;
 - replay after restart;
-- idempotency-key expiry behavior.
+- idempotency-key scope/expiry;
+- same-key different-payload conflict handling;
+- at-most-once execution;
+- exactly-once business effect;
+- external payment safety.
 
 ## Forward boundary
 
-Duplicate PAYMENT execution is intentionally not exercised here.
+Duplicate PAYMENT execution remains intentionally untested here.
 
 P16 owns duplicate payment and external-effect reasoning.
