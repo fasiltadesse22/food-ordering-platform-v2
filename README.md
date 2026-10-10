@@ -1,7 +1,7 @@
 # Food Ordering Platform — V8.0 Fresh-Start Evolution
 
+Current stage: C1.1-P19 / C1.1-FINAL evidence-bearing freeze candidate
 Inherited verified checkpoint: C1.1-P18
-Current evolution: C1.1-P19 / C1.1-FINAL candidate
 
 ## P19
 
@@ -17,34 +17,44 @@ Type A only.
 
 Production behavior remains unchanged.
 
-P19 adds the final Cluster 1.1 review package under:
+The final Cluster 1.1 review package is under:
 architecture/cluster-1.1/
 
-## Verification
+## Candidate verification
 
-CI continues to execute:
-- mvn -B -ntp verify
-- experiments/cluster-1.1/p18-process-restart-durability.sh
+P19 candidate commit:
+a2f1360dc0a52327300b561fa3900bae60ae1f6f
 
-The cluster is not frozen until the exact P19 candidate and evidence-bearing commit pass those gates.
+GitHub Actions:
+38035664742
 
-## Intended final baseline
+Observed:
+- 86 Maven tests passed;
+- 0 failures;
+- 0 errors;
+- BUILD SUCCESS;
+- P18 real JVM-replacement experiment reproduced CANCELLED-before-kill / 404-after-restart.
 
-One real Java 21 / Spring Boot deployable.
+## Final baseline architecture
 
-Current in-process InMemoryOrderRepository authority.
+- one Java 21 / Spring Boot deployable;
+- in-memory Order authority;
+- executable lifecycle/guard/invariant model;
+- preserved concurrency, replay, external-effect, stale-state and durability failure evidence.
 
-Known/preserved failure evidence for:
-- concurrency;
-- replay;
-- external payment effects;
-- stale writes;
-- restart durability.
+No PostgreSQL or later distributed mechanisms are added in Cluster 1.1.
 
-No PostgreSQL or later distributed mechanisms yet.
+## Cluster 1.2 handoff
 
-## Next
+Cluster 1.2 must inherit the final verified C1.1 commit exactly.
 
-Cluster 1.2 — Entities, Value Objects, Aggregates & Consistency Boundaries.
+It may then evolve:
+- durable relational persistence;
+- aggregate/consistency boundaries;
+- local transactions;
+- selected DB constraints;
+- optimistic concurrency implications;
 
-It must inherit C1.1-FINAL exactly and evolve durable relational persistence/consistency mechanisms only from the evidence preserved here.
+only from the evidence preserved here.
+
+The evidence-bearing commit still requires its own CI pass before C1.1-P19 and C1.1-FINAL branches are created.

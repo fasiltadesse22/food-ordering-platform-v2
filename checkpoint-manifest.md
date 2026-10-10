@@ -1,13 +1,15 @@
-# Checkpoint Manifest — C1.1-P19 / C1.1-FINAL Candidate
+# Checkpoint Manifest — C1.1-P19 / C1.1-FINAL
 
 ## Identity
 
-- Target part checkpoint: C1.1-P19
-- Target cluster checkpoint: C1.1-FINAL
-- Current status: CANDIDATE — NOT FROZEN
+- Part checkpoint: C1.1-P19
+- Cluster checkpoint: C1.1-FINAL
+- Status: VERIFIED — FREEZE PENDING EXACT EVIDENCE-COMMIT CI
 - Inherited checkpoint: C1.1-P18
 - Inherited branch: checkpoints/C1.1-P18
 - Inherited commit: 8644f76bcf77e23941f4747c3527a950a6352762
+- P19 candidate commit: a2f1360dc0a52327300b561fa3900bae60ae1f6f
+- P19 candidate verification: 38035664742
 
 ## Part title
 
@@ -27,7 +29,22 @@ Unchanged.
 
 No new production mechanism is introduced.
 
-## Final required outputs
+## Verified candidate gate
+
+mvn -B -ntp verify
+
+Observed:
+Tests run: 86
+Failures: 0
+Errors: 0
+Skipped: 0
+BUILD SUCCESS
+
+P18 real process experiment also reran:
+- CANCELLED / HTTP 200 before SIGKILL;
+- same OrderId / HTTP 404 after fresh JVM startup.
+
+## Final outputs
 
 - final state-machine/workflow map;
 - invariant/contract catalog;
@@ -36,19 +53,45 @@ No new production mechanism is introduced.
 - evidence ledger;
 - ADR-0019;
 - diagnosis/design-defense package;
-- Cluster 1.2 handoff.
+- Cluster 1.2 handoff;
+- P19 exit audit.
 
-## Cluster exit gate
+## Final unresolved policies deliberately preserved
 
-1. root Maven build/tests execute successfully;
-2. P18 real two-process durability experiment executes successfully;
-3. all P01-P18 semantics remain the inherited behavior;
-4. final artifacts distinguish requirement / implementation / observation / inference / guarantee / non-guarantee;
-5. at least one simpler alternative and over-engineering rejection remain explicit;
-6. unresolved business policies are not silently invented;
-7. no PostgreSQL/versioning/idempotency/distributed mechanism is introduced;
-8. evidence-bearing commit is independently reverified;
-9. create checkpoints/C1.1-P19 and checkpoints/C1.1-FINAL from the exact verified commit.
+- definitive payment sequencing;
+- payment authorization versus capture;
+- payment-after-cancellation policy;
+- modification-after-payment policy;
+- cancellation semantics after acceptance/preparation;
+- real refund completion semantics;
+- real payment-provider identity/idempotency/reconciliation.
+
+## Mechanisms now evidence-justified for later evaluation
+
+- durable relational Order persistence;
+- one local transaction around aggregate-consistent state;
+- selected relational constraints;
+- authority-level stale/concurrent write detection, likely via version-aware persistence depending on Cluster 1.2 aggregate reasoning.
+
+## Mechanisms still not justified here
+
+- microservice split;
+- Kafka;
+- Redis;
+- Saga;
+- Outbox;
+- CQRS;
+- Event Sourcing;
+- distributed locks;
+- database-per-service;
+- Kubernetes/AWS runtime architecture.
+
+## Freeze gate remaining
+
+The evidence-bearing commit containing this manifest/evidence must:
+1. pass root Maven verification;
+2. reproduce the P18 process-loss experiment;
+3. then be branched as both checkpoints/C1.1-P19 and checkpoints/C1.1-FINAL.
 
 ## Next enabled cluster
 

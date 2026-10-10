@@ -29,14 +29,39 @@ P19 adds:
 - Cluster 1.2 handoff;
 - final evidence ledger/manifest.
 
-## Cluster exit predictions
+## P19 verification
 
-The exact P19 candidate must:
-1. pass the complete Maven reactor;
-2. retain all P01-P18 behavior;
-3. rerun the real P18 JVM replacement experiment;
-4. continue to demonstrate the intentionally non-durable baseline;
-5. add no production PostgreSQL/versioning/idempotency/distributed mechanism.
+Candidate commit:
+a2f1360dc0a52327300b561fa3900bae60ae1f6f
+
+GitHub Actions:
+38035664742
+
+Root Maven observation:
+- tests run: 86;
+- failures: 0;
+- errors: 0;
+- skipped: 0;
+- BUILD SUCCESS.
+
+P18 runtime observation reproduced inside the P19 candidate:
+- process A started;
+- Order 09eeaf7e-555e-453a-9765-541f7a50ad02 was CANCELLED and returned HTTP 200;
+- process A PID 2481 terminated with SIGKILL;
+- process B started from the same application artifact;
+- GET same OrderId returned HTTP 404.
+
+## Cluster exit conclusions
+
+Executed and verified:
+1. all current Maven tests remain green;
+2. synthesis artifacts do not alter production behavior;
+3. the intentionally non-durable P18 baseline remains reproducible.
+
+Structurally audited:
+- one deployable remains;
+- in-memory Order authority remains;
+- no PostgreSQL/version/idempotency/distributed mechanism has been introduced.
 
 ## Diagnosis mastery
 
@@ -73,4 +98,6 @@ reservation, funds transfer, inventory allocation, workflow approval or resource
 
 ## Exit status
 
-Pending exact P19 CI and evidence-bearing re-verification.
+Cluster exit behavior gate PASSED for the P19 candidate.
+
+The evidence-bearing commit must still pass the same CI gates before checkpoint branches are created.
