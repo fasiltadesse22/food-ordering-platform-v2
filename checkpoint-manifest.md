@@ -1,110 +1,65 @@
-# Checkpoint Manifest — C1.1-P14
+# Checkpoint Manifest — C1.1-P15 Candidate
 
 ## Identity
 
-- Checkpoint: C1.1-P14
-- Current status: VERIFIED AND FROZEN
-- Inherited checkpoint: C1.1-P13
-- Inherited branch: checkpoints/C1.1-P13
-- Inherited commit: 2f0bb04cc9975aec232aa5ea67eb32dd793789f2
-- P14 experiment commit: ea9581114b21b4331c8776681f5311e7ffaa3175
-- P14 verification run: 38027340494
+- Target checkpoint: C1.1-P15
+- Current status: CANDIDATE — NOT FROZEN
+- Inherited checkpoint: C1.1-P14
+- Inherited branch: checkpoints/C1.1-P14
+- Inherited commit: 4b512248e93609bc7e1529223ebbbf4d5b11489b
 
 ## Engineering question
 
-When customer cancellation and restaurant acceptance race from the same Order version, what should correctness mean, who is allowed to win, what can each participant know, and how do we distinguish concurrency-control mechanism from business conflict policy?
+When the same logical business intent appears again, what should repeated execution mean, how can the system know it is a replay, and which business effects/results must remain stable?
 
 ## Part classification
 
-Type C — Cross-Actor Concurrency Failure Evolution.
+Type C — Repeated-Command / Replay Failure Semantics.
 
 ## Production code/config
 
 Unchanged.
 
-The vulnerable:
-find
-→ decide
-→ save
+## Required distinctions
 
-path remains preserved.
+duplicate request != same logical command.
 
-## Verified serial controls
+same payload != same logical command.
 
-Cancel first:
-- cancellation Accepted;
-- later acceptance rejected;
-- final authority CANCELLED.
+effect convergence != duplicate detection.
 
-Accept first:
-- acceptance Accepted;
-- later cancellation rejected;
-- final authority ACCEPTED.
+duplicate suppression != result replay.
 
-## Verified shared-snapshot race
+same final state != at-most-once execution.
 
-Schedule A:
-- both capture PLACED;
-- both return Accepted;
-- CANCELLED saves first;
-- ACCEPTED saves last;
-- final authority ACCEPTED.
+correlation ID != idempotency key.
 
-Schedule B:
-- both capture PLACED;
-- both return Accepted;
-- ACCEPTED saves first;
-- CANCELLED saves last;
-- final authority CANCELLED.
+local state idempotence != external side-effect idempotence.
 
-## Minimal correctness requirement
+## Controlled experiments
 
-The two mutually exclusive intents must not both be acknowledged as successful authoritative decisions from one logical PLACED version.
+1. lost cancellation success response followed by retry;
+2. concurrent identical cancellations;
+3. repeated refund request.
 
-## Business policy
+## Intentionally deferred
 
-No winner policy is selected yet.
+- duplicate payment execution: P16;
+- general command/idempotency key model;
+- durable dedup/result storage;
+- key expiry;
+- same-key different-payload detection;
+- restart-safe replay;
+- external exactly-once claims.
 
-Documented alternatives:
-- first authoritative commit wins;
-- cancellation priority before a defined cutoff;
-- acceptance priority after a fulfillment commitment.
+The complete idempotency mechanism belongs to later roadmap work.
 
-Current last-write-wins is explicitly NOT approved business policy.
+## Freeze gate
 
-## Verification
-
-GitHub Actions:
-38027340494
-
-Observed:
-Tests run: 75, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
-
-## Verified distinctions
-
-concurrency-control mechanism != business winner policy.
-
-actor-local success != guaranteed surviving authority.
-
-request intent time != authoritative commit order.
-
-valid individual successor != valid concurrent acknowledgement history.
-
-current last-write-wins behavior != justified conflict policy.
-
-## Mechanisms deliberately absent
-
-- synchronized;
-- version field;
-- compare-and-set;
-- optimistic locking;
-- pessimistic locking;
-- PostgreSQL;
-- @Transactional;
-- distributed lock;
-- timestamp-winner rule.
-
-## Next pressure
-
-Part 1.1.15 studies repeated commands and replay semantics without conflating duplicates with cross-actor conflicts.
+1. root Maven verification succeeds;
+2. inherited P01-P14 tests remain green;
+3. sequential cancellation retry returns a different outcome while final state remains CANCELLED;
+4. concurrent identical cancellation performs two saves and both calls can return Accepted;
+5. final current Order still contains one cancellation occurrence;
+6. repeated refund is suppressed without replaying original success;
+7. no duplicate-payment experiment or idempotency mechanism is introduced prematurely.

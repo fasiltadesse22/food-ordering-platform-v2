@@ -1,62 +1,47 @@
 # Food Ordering Platform — V8.0 Fresh-Start Evolution
 
-Current verified checkpoint: C1.1-P14 — Cancellation / Acceptance Race
-Previous checkpoint: checkpoints/C1.1-P13
+Inherited verified checkpoint: C1.1-P14
+Current evolution: C1.1-P15 candidate — Repeated Commands & Replay Semantics
 
 ## Part type
 
-Type C — cross-actor concurrency failure evolution.
+Type C — repeated-command / replay failure semantics.
 
 ## Verification
 
-GitHub Actions run:
-38027340494
-
-Command:
 mvn -B -ntp verify
 
-Observed:
-Tests run: 75, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
+P15 is not frozen until the exact candidate passes CI.
 
-## Verified P14 conflict
+## P15 question
 
-From PLACED:
+When the same logical intent is submitted again:
+- is it a retry or a new command?
+- can the server know?
+- is the business effect repeated?
+- is the first result replayed?
 
-Customer CANCEL:
-PLACED → CANCELLED
+## Current behavior
 
-Restaurant ACCEPT:
-PLACED → ACCEPTED
+Sequential cancellation retry:
+- final state converges to CANCELLED;
+- retry is rejected as ILLEGAL_TRANSITION;
+- original Accepted result is not replayed.
 
-Serial execution:
-only the first authoritative transition succeeds.
+Concurrent identical cancellation:
+- both requests can execute and return Accepted;
+- current Order converges to one CANCELLED representation;
+- this is not duplicate detection or at-most-once execution.
 
-Controlled shared-snapshot concurrency:
-both actors can receive Accepted;
-last save determines current authority;
-reversing only save order reverses the surviving outcome.
+Repeated refund:
+- second request is suppressed by REFUND_ALREADY_REQUESTED;
+- original Accepted result is not replayed.
 
-## Critical distinction
+## Important boundary
 
-Concurrency mechanism:
-How do we ensure one coherent winner?
+P15 does not implement the later full idempotency mechanism.
 
-Business policy:
-Which actor should win under which business conditions?
-
-The current implementation answers neither correctly by design.
-
-It merely exhibits accidental last-write-wins timing.
-
-## Business policy remains open
-
-Candidate alternatives:
-- first authoritative commit wins;
-- cancellation priority before a defined cutoff;
-- acceptance priority after fulfillment commitment.
-
-No policy is implemented in P14.
+Duplicate payment is reserved for P16.
 
 ## Current topology
 
@@ -64,7 +49,7 @@ No policy is implemented in P14.
 - in-memory Order authority;
 - no PostgreSQL;
 - no @Transactional;
-- no locking/versioning;
+- no durable idempotency store;
 - no messaging.
 
 See checkpoint-manifest.md and architecture/ for evidence-qualified details.
