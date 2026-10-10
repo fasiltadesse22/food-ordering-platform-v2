@@ -1,57 +1,47 @@
 # Food Ordering Platform — V8.0 Fresh-Start Evolution
 
-Current verified checkpoint: C1.1-P13 — Conflicting Operations and Concurrency Windows
-Previous checkpoint: checkpoints/C1.1-P12
+Inherited verified checkpoint: C1.1-P13
+Current evolution: C1.1-P14 candidate — Cancellation / Acceptance Race
 
 ## Part type
 
-Type C — controlled concurrency failure evolution.
+Type C — cross-actor concurrency failure evolution.
 
 ## Verification
 
-GitHub Actions run:
-38026585059
-
-Command:
 mvn -B -ntp verify
 
-Observed:
-Tests run: 71, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
+P14 is not frozen until the exact candidate passes CI.
 
-## Verified concurrency failure
+## P14 conflict
 
-Sequential fresh-state behavior:
-- ACCEPT from PLACED succeeds;
-- REJECT then observes ACCEPTED and is rejected.
+From PLACED:
 
-Controlled concurrency:
-- ACCEPT and REJECT can both capture the same PLACED Order;
-- both can return Accepted;
-- last save becomes current authority;
-- reversing only save order reverses the surviving decision.
+Customer CANCEL:
+PLACED → CANCELLED
 
-## Root mechanism
+Restaurant ACCEPT:
+PLACED → ACCEPTED
 
-Current application workflow:
+Sequentially, whichever transition becomes authoritative first makes the other illegal.
 
-find current Order
-→ decide against returned immutable snapshot
-→ save complete successor
+Under the preserved shared-snapshot race, both can derive a locally valid successor before either observes the other's save.
 
-No expected-version comparison protects the interval between read and save.
+## Critical distinction
 
-ConcurrentHashMap protects individual map operations, not the full business transaction.
+Concurrency mechanism:
+How do we ensure one coherent winner?
 
-## Important scope
+Business policy:
+Which actor should win under which business conditions?
 
-P13 proves selected deterministic interleavings.
+P14 does not silently answer the second question with implementation timing.
 
-It does not measure race frequency under real traffic and does not establish database/multi-JVM behavior.
+## Current accidental behavior
 
-No fix is added yet.
+Unconditional last-write-wins.
 
-P14 will apply the same mechanism to customer cancellation versus restaurant acceptance.
+This is not approved business policy.
 
 ## Current topology
 

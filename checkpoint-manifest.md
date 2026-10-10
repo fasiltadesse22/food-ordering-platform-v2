@@ -1,91 +1,75 @@
-# Checkpoint Manifest — C1.1-P13
+# Checkpoint Manifest — C1.1-P14 Candidate
 
 ## Identity
 
-- Checkpoint: C1.1-P13
-- Current status: VERIFIED AND FROZEN
-- Inherited checkpoint: C1.1-P12
-- Inherited branch: checkpoints/C1.1-P12
-- Inherited commit: 0d81069ea1761c2e88825bff6d3dcd6c803f4879
-- P13 experiment commit: 198ded2738a9a68192cd0530c52224ef41611e6f
-- P13 verification run: 38026585059
+- Target checkpoint: C1.1-P14
+- Current status: CANDIDATE — NOT FROZEN
+- Inherited checkpoint: C1.1-P13
+- Inherited branch: checkpoints/C1.1-P13
+- Inherited commit: 2f0bb04cc9975aec232aa5ea67eb32dd793789f2
 
 ## Engineering question
 
-How can two individually legal business decisions conflict when both are made from the same previously authoritative state?
+When customer cancellation and restaurant acceptance race from the same Order version, what should correctness mean, who is allowed to win, what can each participant know, and how do we distinguish concurrency-control mechanism from business conflict policy?
 
 ## Part classification
 
-Type C — Controlled Concurrency Failure Evolution.
+Type C — Cross-Actor Concurrency Failure Evolution.
 
 ## Production code/config
 
 Unchanged.
 
-The current vulnerable:
+The vulnerable:
 find
-→ evolve
+→ decide
 → save
 
 path remains preserved.
 
-## Verified experiment
+## Controlled experiment
 
-Sequential:
-- ACCEPT succeeds;
-- fresh REJECT observes ACCEPTED and is rejected.
+Serial controls:
+- cancel then accept;
+- accept then cancel.
 
-Concurrent schedule A:
-- both capture PLACED;
-- both return Accepted;
-- ACCEPT saves first;
-- REJECT saves last;
-- final authority = REJECTED.
+Shared-snapshot schedules:
+- CANCELLED save first, ACCEPTED save last;
+- ACCEPTED save first, CANCELLED save last.
 
-Concurrent schedule B:
-- both capture PLACED;
-- both return Accepted;
-- REJECT saves first;
-- ACCEPT saves last;
-- final authority = ACCEPTED.
+## Minimal correctness requirement
 
-## Verification
+The two mutually exclusive intents must not both be acknowledged as successful authoritative decisions from one logical PLACED version.
 
-GitHub Actions:
-38026585059
+## Business policy
 
-Observed:
-Tests run: 71, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
+No winner policy is selected yet.
 
-## Verified distinctions
+Documented alternatives:
+- first authoritative commit wins;
+- cancellation priority before a defined cutoff;
+- acceptance priority after a fulfillment commitment.
 
-locally legal decision != globally correct concurrent history.
-
-immutable successor != protected stale replacement.
-
-thread-safe map operation != atomic business read-modify-write.
-
-Accepted application result != guaranteed durable/current surviving decision.
-
-scheduler-dependent race testing != deterministic interleaving testing.
+Current last-write-wins is explicitly NOT approved policy.
 
 ## Mechanisms deliberately absent
 
 - synchronized;
-- lock;
 - version field;
 - compare-and-set;
 - optimistic locking;
 - pessimistic locking;
 - PostgreSQL;
 - @Transactional;
-- distributed lock.
+- distributed lock;
+- timestamp-winner rule.
 
-## Evidence-qualified non-guarantee
+## Freeze gate
 
-Conflicting Order updates are not currently serialized or conflict-detected across find→evolve→save.
-
-## Next pressure
-
-Part 1.1.14 applies the now-proven conflict mechanism to Customer CANCEL versus Restaurant ACCEPT.
+1. root Maven verification succeeds;
+2. inherited P01-P13 tests remain green;
+3. both serial controls allow one success and reject the second;
+4. both shared-snapshot schedules acknowledge both actors;
+5. reversing save order reverses surviving authority;
+6. participant-knowledge and policy artifacts are recorded;
+7. no winner policy/concurrency mechanism is added without evidence.
