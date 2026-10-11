@@ -1,53 +1,40 @@
-# Checkpoint Manifest — C1.2-P01 Candidate
+# Checkpoint Manifest — C1.2-P02 Candidate
 
 ## Identity
-- Part: C1.2-P01
-- Cluster: 1.2 — Entities, Value Objects, Aggregates & Consistency Boundaries
-- Title: Inherited Correctness Pressure and Consistency-Boundary Discovery
-- Evolution: Type A — analysis/evidence documentation only
-- Inherited frozen branch: `checkpoints/C1.1-FINAL`
-- Inherited frozen commit: `d76cfdf585e19afeef21b9d522351541c5cbc07f`
-- Status of this authored tree: CANDIDATE; must not be called VERIFIED/FROZEN until CI succeeds for exact resulting commit and checkpoint branch is created.
+Part: C1.2-P02 — Required State, Authority, Identity and Lifecycle Continuity
+Inherits: `checkpoints/C1.2-P01` at `2a61909a2cf3470b3917caab2abecdafe9334e81`
+Part type: A/C — source-grounded identity contract, deterministic continuity experiments; no production code/config/topology change.
+Status of authored tree: CANDIDATE until exact-commit CI passes and checkpoint branch is created.
 
-## Engineering question
-Which existing correctness requirements demand a shared consistency boundary?
-Prediction: selected lifecycle status/history invariants imply one coherent local Order decision boundary,
-while independent Customer, Restaurant and external payment truth do not enter that boundary merely by reference.
+## Engineering question and prediction
+What makes business state belong to the same continuing object through decisions, representations and process lifetimes?
+Prediction: domain lifecycle methods preserve stable OrderId across new object instances; distinct identities remain independent;
+a correct identifier doesn't imply current shared authority in another repository or JVM.
 
-## Changes justified
-- Scenario/state-dependency map in `architecture/scenarios/C1.2-P01-consistency-boundary-discovery.md`.
-- Provisional ADR-0020 under `architecture/adr/`.
-- Inherited-experiment plan under `experiments/cluster-1.2/`.
-- P01 evidence ledger under `architecture/evidence/`.
-- This manifest.
-No production Java, Maven config, database, tests, CI, networking, or application topology changes.
+## Changes
+New `OrderIdentityContinuityContractTest` with 5 tests for lifecycle identity, distinct IDs, typed value equality,
+repository authority scope, and stale correct-ID representations.
+New detailed scenario, provisional ADR-0021 identity-continuity decision, experiment plan, evidence ledger and this manifest.
+Unchanged: production Java, HTTP, Maven dependencies, CI workflow, in-memory authority, current domain invariants,
+known lost-update/stale-write/process-loss/duplicate external payment failures.
 
-## Verification gate
-Existing GitHub workflow must run for exact candidate commit:
+## Verification requirement
+GitHub Actions must execute on the exact resulting P02 commit:
 `mvn -B -ntp verify`
 `experiments/cluster-1.1/p18-process-restart-durability.sh`
-The C1.1-FINAL baseline was verified by workflow run 38035876593; **that cannot substitute for P01's own commit verification**.
-P01 candidate CI result is intentionally left to the GitHub Actions record (no invented run ID or PASS assertion).
-Freeze `checkpoints/C1.2-P01` only after both required steps are green on the exact commit.
-The action run linked to the commit and the checkpoint branch SHA are the final external verification record.
+When successful, create `checkpoints/C1.2-P02` at precisely the verified commit.
+P01's successful run 38038951502 is inherited evidence and must not be counted as P02 verification.
 
-## Preserved known fragilities
-- Concurrent mutually exclusive decisions from P13/P14;
-- stale replacement and state resurrection from P17;
-- in-memory process loss from P18;
-- repeated command and external payment effect issues from P15/P16.
-No mitigation is introduced or claimed.
+## Guarantees, limits, deferred work
+Structurally: typed OrderId, immutable normal lifecycle successors, per-repository value-equal lookup, no version.
+Tests targeted: identity survives evolution; independent IDs; equality semantics; independent repository authority;
+stale same-ID state does not become authoritative without a save.
+Not guaranteed: global UUID uniqueness, durable reconstructability, transaction semantics,
+concurrency serialization, freshness, provider payment truth, security authentication.
 
-## Evidence language
-Observed (inherited): specified CI execution and recorded failure experiments.
-Structurally demonstrated: selected invariant checks, immutable successors, unconditional in-memory save.
-Inferred: Order-centered immediate consistency boundary is plausible.
-Not guaranteed: durable authority, conflict detection, comprehensive history correctness, cross-authority atomicity or idempotency.
+Deferred: aggregate formalization P04/P07, persistence P11/P12, transaction P15, isolation P16,
+optimistic version P17, service split and distributed mechanisms.
 
-## ADR and deferred mechanisms
-ADR-0020 records provisional candidate only. PostgreSQL, schema migrations, DB constraints,
-database transactions, optimistic/pessimistic locks, Kafka, Redis, Saga, Outbox, Inbox, CQRS,
-Event Sourcing, distributed locks, service split and Cloud/Kubernetes deployment remain deferred.
-
-## Next part
-C1.2-P02 — Required State, Authority, Identity and Lifecycle Continuity.
+## Handoff
+Next part P03 — Atomicity Requirements and the Shape of a Consistency Boundary.
+Do not change core domain topology before P03/P04 identity/consistency analysis.
