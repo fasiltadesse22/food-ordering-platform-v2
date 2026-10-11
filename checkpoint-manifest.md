@@ -1,40 +1,31 @@
-# Checkpoint Manifest — C1.2-P02 Candidate
+# Checkpoint Manifest — C1.2-P03 Candidate
 
 ## Identity
-Part: C1.2-P02 — Required State, Authority, Identity and Lifecycle Continuity
-Inherits: `checkpoints/C1.2-P01` at `2a61909a2cf3470b3917caab2abecdafe9334e81`
-Part type: A/C — source-grounded identity contract, deterministic continuity experiments; no production code/config/topology change.
-Status of authored tree: CANDIDATE until exact-commit CI passes and checkpoint branch is created.
+Part: 1.2.3 Atomicity Requirements and the Shape of a Consistency Boundary
+Inherited: `checkpoints/C1.2-P02` at `e6919e51a5deb5b105397b44205153f1375eab73`
+Evolution: A/C documentation and controlled in-process failure tests; production runtime unchanged.
+Checkpoint candidate status before CI: NOT YET VERIFIED.
 
-## Engineering question and prediction
-What makes business state belong to the same continuing object through decisions, representations and process lifetimes?
-Prediction: domain lifecycle methods preserve stable OrderId across new object instances; distinct identities remain independent;
-a correct identifier doesn't imply current shared authority in another repository or JVM.
+## Engineering question
+When must multiple changes become authoritative together, and why is constructing a coherent domain successor not sufficient to prove an atomic committed update?
 
 ## Changes
-New `OrderIdentityContinuityContractTest` with 5 tests for lifecycle identity, distinct IDs, typed value equality,
-repository authority scope, and stale correct-ID representations.
-New detailed scenario, provisional ADR-0021 identity-continuity decision, experiment plan, evidence ledger and this manifest.
-Unchanged: production Java, HTTP, Maven dependencies, CI workflow, in-memory authority, current domain invariants,
-known lost-update/stale-write/process-loss/duplicate external payment failures.
+Four targeted tests: candidate-before-save, failure-before-publish, publish-then-exception, domain rejection leaves save untouched.
+Scenario atomicity matrix, ADR-0022, experiment plan, evidence ledger, this manifest.
+No database, schema, @Transactional, lock, version field, external authority, Kafka, or service split.
 
-## Verification requirement
-GitHub Actions must execute on the exact resulting P02 commit:
-`mvn -B -ntp verify`
-`experiments/cluster-1.1/p18-process-restart-durability.sh`
-When successful, create `checkpoints/C1.2-P02` at precisely the verified commit.
-P01's successful run 38038951502 is inherited evidence and must not be counted as P02 verification.
+## Required verification
+On P03 commit, GitHub Actions must run root `mvn -B -ntp verify` and
+`experiments/cluster-1.1/p18-process-restart-durability.sh`.
+Prior P02 CI success is inherited evidence but does not substitute for execution of changed tests.
 
-## Guarantees, limits, deferred work
-Structurally: typed OrderId, immutable normal lifecycle successors, per-repository value-equal lookup, no version.
-Tests targeted: identity survives evolution; independent IDs; equality semantics; independent repository authority;
-stale same-ID state does not become authoritative without a save.
-Not guaranteed: global UUID uniqueness, durable reconstructability, transaction semantics,
-concurrency serialization, freshness, provider payment truth, security authentication.
+## Preserved fragile behavior
+Concurrent contradictory Accepted calls P13/P14; stale replacement P17; process loss P18;
+replay P15; external payment effects P16; no complete history validator or legal business winner policy.
 
-Deferred: aggregate formalization P04/P07, persistence P11/P12, transaction P15, isolation P16,
-optimistic version P17, service split and distributed mechanisms.
+## Proposed and deferred implementation
+P15 physical local transaction and rollback tests after P11/P12 PostgreSQL; P16/P17 concurrency/isolation;
+P18 commit-unknown/client retry semantics; P21 cross-authority analysis.
 
-## Handoff
-Next part P03 — Atomicity Requirements and the Shape of a Consistency Boundary.
-Do not change core domain topology before P03/P04 identity/consistency analysis.
+## Next
+P04 derive aggregate candidates from invariants, preserving provisional Order-centered boundary.
