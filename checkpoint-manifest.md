@@ -1,31 +1,19 @@
-# Checkpoint Manifest — C1.2-P03 Candidate
+# Checkpoint Manifest — C1.2-P04 Candidate
 
-## Identity
-Part: 1.2.3 Atomicity Requirements and the Shape of a Consistency Boundary
-Inherited: `checkpoints/C1.2-P02` at `e6919e51a5deb5b105397b44205153f1375eab73`
-Evolution: A/C documentation and controlled in-process failure tests; production runtime unchanged.
-Checkpoint candidate status before CI: NOT YET VERIFIED.
+Part: 1.2.4 Deriving Aggregate Candidates from Invariants
+Base: checkpoints/C1.2-P03 (55c6169194ebbc19aae437462ec1a7358a772f3d).
+Evolution: Type A architecture derivation/ADR/evidence, no runtime/code/config/schema change.
 
-## Engineering question
-When must multiple changes become authoritative together, and why is constructing a coherent domain successor not sufficient to prove an atomic committed update?
+Deliverables:
+- architecture/scenarios/C1.2-P04-aggregate-candidate-derivation.md
+- architecture/adr/ADR-0023-provisional-order-aggregate-candidate.md
+- architecture/evidence/C1.2-P04-evidence.md
+- this checkpoint manifest
 
-## Changes
-Four targeted tests: candidate-before-save, failure-before-publish, publish-then-exception, domain rejection leaves save untouched.
-Scenario atomicity matrix, ADR-0022, experiment plan, evidence ledger, this manifest.
-No database, schema, @Transactional, lock, version field, external authority, Kafka, or service split.
+Provisional decision: one Order-centered immediate consistency boundary and current Order as prospective root, based on established invariants/identity/atomicity evidence. Customer/Restaurant/provider full authority excluded. Status/history, owned lines, guard dependencies and relevant occurrences remain local to one Order's decisions.
 
-## Required verification
-On P03 commit, GitHub Actions must run root `mvn -B -ntp verify` and
-`experiments/cluster-1.1/p18-process-restart-durability.sh`.
-Prior P02 CI success is inherited evidence but does not substitute for execution of changed tests.
+Preserved fragilities: P13/P14 conflicting acknowledged decisions, P17 stale current overwrite, P18 process-loss, P15 repeated-command and P16 external-effect divergence.
+Deferred: formal entity/value details P05/P06, root enforcement P07, Postgres P11/P12, SQL local transactions P15, version/conflict P16–P18, aggregate size P19/P20, cross authority P21.
 
-## Preserved fragile behavior
-Concurrent contradictory Accepted calls P13/P14; stale replacement P17; process loss P18;
-replay P15; external payment effects P16; no complete history validator or legal business winner policy.
-
-## Proposed and deferred implementation
-P15 physical local transaction and rollback tests after P11/P12 PostgreSQL; P16/P17 concurrency/isolation;
-P18 commit-unknown/client retry semantics; P21 cross-authority analysis.
-
-## Next
-P04 derive aggregate candidates from invariants, preserving provisional Order-centered boundary.
+Verification gate: exact-commit GitHub Actions must pass root mvn -B -ntp verify and existing real P18 process-restart script. Candidate document does not claim P04 CI has already passed.
+Next: Part 1.2.5 Entity Identity, Equality, State and Lifecycle.
