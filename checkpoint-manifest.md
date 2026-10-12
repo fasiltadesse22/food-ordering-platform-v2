@@ -1,27 +1,19 @@
-# Checkpoint Manifest — C1.2-P08 Candidate
+# Checkpoint Manifest — C1.2-P09 Candidate
 
-Part: 1.2.8 Aggregate Lifecycle, References and Domain Services
-Inherited verified checkpoint: checkpoints/C1.2-P07 (`670ce14c7f985015dc65c3caafc60113a97d7c90`).
-Evolution: Type A/C, eight targeted boundary tests plus scenario, ADR, experiment and evidence ledgers. No production runtime changes.
+Part 1.2.9 — Domain Facts, Domain Events and Aggregate Decisions.
+Inherited verified base checkpoints/C1.2-P08 5f78c68fc04b76f34fbc431010a677c0ba83bc9d.
+Evolution B/C/A. Real production-domain change: OrderPlaced.from initial-placement-state guard. Nine executable tests and deep architecture/evidence artifacts.
+Files:
+- applications/food-ordering-app/src/main/java/com/acme/foodordering/domain/order/fact/OrderPlaced.java
+- applications/food-ordering-app/src/test/java/com/acme/foodordering/application/semantics/OrderDomainFactDecisionBoundaryTest.java
+- architecture/scenarios/C1.2-P09-domain-facts-events-and-decisions.md
+- architecture/adr/ADR-0028-protect-placement-fact-semantics-defer-events.md
+- experiments/cluster-1.2/p09-domain-fact-and-event-semantics.md
+- architecture/evidence/C1.2-P09-evidence.md
+- checkpoint-manifest.md
 
-Source-grounded decision:
-Order owns local lifecycle, line modification and refund-eligibility decisions. CustomerId/RestaurantId are typed external identity references; complete Customer/Restaurant models not yet present.
-PlaceOrderService/OrderWorkflowService orchestrate use cases; their Service name does not imply DDD domain service.
-No evidence-based cross-aggregate policy justifies a new production domain service today.
-Local OrderPlaced and PAYMENT_RECORDED are not broker integrations or provider financial proofs.
-Status terminality is not the end of all local milestones.
-
-Added files:
-OrderAggregateLifecycleReferenceBoundaryTest (8 tests)
-architecture/scenarios/C1.2-P08-aggregate-lifecycle-references-domain-services.md
-architecture/adr/ADR-0027-order-lifecycle-references-and-domain-services.md
-experiments/cluster-1.2/p08-lifecycle-reference-service-experiments.md
-architecture/evidence/C1.2-P08-evidence.md
-checkpoint-manifest.md
-
-Verification:
-GitHub Actions on exact evidence-bearing candidate SHA must pass Maven root reactor verify and P18 real JVM replacement script. Candidate status unverified before exact-CI result.
-Preserve P13/P14/P15/P16/P17/P18 fragilities and P07 invariant.
-No PostgreSQL, version field, transaction, domain-service abstraction, Restaurant/Payment aggregate, Saga, Kafka or topology split.
-
-Next: Part 1.2.9 Domain Facts, Domain Events and Aggregate Decisions.
+Contract: Fact factory can no longer reconstruct historical placement total from later modified or workflow-evolved Order snapshot. App creates OrderPlaced only after current save returns. Never claim public record constructor proves committed origin.
+Deferred: P10 repository identity and authority; P11–P15 database/transaction; P16–P18 concurrency/retry; later messaging, outbox, CDC and event sourcing only if justified.
+Preserved fragilities: P13/P14 conflicting accepted decisions; P15 repeated commands, P16 provider divergence, P17 stale overwrite; P18 process loss.
+Verification: exact-commit CI Maven root verify + P18 real JVM restart before frozen branch. Candidate is not verified until those succeed.
+Next P1.2.10 Repository Semantics, Persistence Authority and Reconstitution.
