@@ -1,11 +1,27 @@
-# Checkpoint Manifest — C1.2-P07 Candidate
+# Checkpoint Manifest — C1.2-P08 Candidate
 
-Part: 1.2.7 Aggregate Roots, Encapsulation and Invariant Enforcement
-Base: `checkpoints/C1.2-P06`, `edde75f6dc63cb4c1568939497ab7cea218c5759`.
-Primary evolution: B/C/A — minimally strengthen root invariant, seven regression/negative-control tests, ADR and evidence.
-Changes: `OrderInvariants.java`, `OrderInvariantViolationException.java`, `OrderAggregateRootEncapsulationTest.java`, scenario, ADR-0026, experiment/evidence ledgers, this manifest.
-Added selected invariant: RESTAURANT_ACCEPTED fact implies current ACCEPTED, PREPARING or COMPLETED under current lifecycle.
-Production topology/repository remains exactly one in-process Order authority; no PostgreSQL, transactions, optimistic versioning, Kafka, Saga or service split.
-Intentionally preserved: local payment duplicate recording, incomplete full-history semantics, stale-writes P13/P14/P17, JVM-loss P18, external-payment divergence P16.
-Required tests: exact-commit Maven root verify and P18 process-restart through GitHub Actions. This authored tree is a **candidate** until CI succeeds.
-Handoff: P08 aggregate lifecycle/references and domain services, P09 local facts/events; later persistence and concurrency mechanisms remain deferred.
+Part: 1.2.8 Aggregate Lifecycle, References and Domain Services
+Inherited verified checkpoint: checkpoints/C1.2-P07 (`670ce14c7f985015dc65c3caafc60113a97d7c90`).
+Evolution: Type A/C, eight targeted boundary tests plus scenario, ADR, experiment and evidence ledgers. No production runtime changes.
+
+Source-grounded decision:
+Order owns local lifecycle, line modification and refund-eligibility decisions. CustomerId/RestaurantId are typed external identity references; complete Customer/Restaurant models not yet present.
+PlaceOrderService/OrderWorkflowService orchestrate use cases; their Service name does not imply DDD domain service.
+No evidence-based cross-aggregate policy justifies a new production domain service today.
+Local OrderPlaced and PAYMENT_RECORDED are not broker integrations or provider financial proofs.
+Status terminality is not the end of all local milestones.
+
+Added files:
+OrderAggregateLifecycleReferenceBoundaryTest (8 tests)
+architecture/scenarios/C1.2-P08-aggregate-lifecycle-references-domain-services.md
+architecture/adr/ADR-0027-order-lifecycle-references-and-domain-services.md
+experiments/cluster-1.2/p08-lifecycle-reference-service-experiments.md
+architecture/evidence/C1.2-P08-evidence.md
+checkpoint-manifest.md
+
+Verification:
+GitHub Actions on exact evidence-bearing candidate SHA must pass Maven root reactor verify and P18 real JVM replacement script. Candidate status unverified before exact-CI result.
+Preserve P13/P14/P15/P16/P17/P18 fragilities and P07 invariant.
+No PostgreSQL, version field, transaction, domain-service abstraction, Restaurant/Payment aggregate, Saga, Kafka or topology split.
+
+Next: Part 1.2.9 Domain Facts, Domain Events and Aggregate Decisions.
