@@ -1,19 +1,18 @@
-# Checkpoint Manifest — C1.2-P09 Candidate
+# Checkpoint Manifest — C1.2-P10 Candidate
 
-Part 1.2.9 — Domain Facts, Domain Events and Aggregate Decisions.
-Inherited verified base checkpoints/C1.2-P08 5f78c68fc04b76f34fbc431010a677c0ba83bc9d.
-Evolution B/C/A. Real production-domain change: OrderPlaced.from initial-placement-state guard. Nine executable tests and deep architecture/evidence artifacts.
-Files:
-- applications/food-ordering-app/src/main/java/com/acme/foodordering/domain/order/fact/OrderPlaced.java
-- applications/food-ordering-app/src/test/java/com/acme/foodordering/application/semantics/OrderDomainFactDecisionBoundaryTest.java
-- architecture/scenarios/C1.2-P09-domain-facts-events-and-decisions.md
-- architecture/adr/ADR-0028-protect-placement-fact-semantics-defer-events.md
-- experiments/cluster-1.2/p09-domain-fact-and-event-semantics.md
-- architecture/evidence/C1.2-P09-evidence.md
-- checkpoint-manifest.md
+Title: Repository Semantics, Persistence Authority and Reconstitution
+Source: V8.0 Cluster 1.2 + derived blueprint part 1.2.10
+Inherits: checkpoints/C1.2-P09 (000c2960fdbbe85106fc68c051193f5fafc37675)
 
-Contract: Fact factory can no longer reconstruct historical placement total from later modified or workflow-evolved Order snapshot. App creates OrderPlaced only after current save returns. Never claim public record constructor proves committed origin.
-Deferred: P10 repository identity and authority; P11–P15 database/transaction; P16–P18 concurrency/retry; later messaging, outbox, CDC and event sourcing only if justified.
-Preserved fragilities: P13/P14 conflicting accepted decisions; P15 repeated commands, P16 provider divergence, P17 stale overwrite; P18 process loss.
-Verification: exact-commit CI Maven root verify + P18 real JVM restart before frozen branch. Candidate is not verified until those succeed.
-Next P1.2.10 Repository Semantics, Persistence Authority and Reconstitution.
+Evolution: Type B source change + Type C controlled tests + Type A ADR/evidence.
+Production: OrderRepository.createNew, OrderAlreadyExistsException, InMemoryOrderRepository.putIfAbsent, PlaceOrderService creation path changed to createNew. Existing saveCurrent intentionally left unconditional.
+Test-only repository stubs updated with explicit createNew handling; nine new repo tests.
+
+Verification required:
+1. root Maven reactor verify in GitHub Actions on exact final P10 commit;
+2. P18 real process restart negative-control experiment;
+3. preserve P13/P14/P17 concurrency failures and P15 replay, P16 provider divergence.
+
+Known non-guarantees: no durable storage, persisted mapping/reconstitution, DB constraints, transaction, version CAS or cross-process unique authority. createNew does not deduplicate same logical command with different IDs; saveCurrent can still upsert and overwrite.
+P11 next: Relational Persistence Design and Schema Evolution — add PostgreSQL/migrations/reproducible DB tests, ensure placement creation maps to unique insert; P12 real adapter and durability; later real transaction, isolation and version controls.
+This file is a candidate manifest until exact-commit CI verified.
