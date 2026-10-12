@@ -68,6 +68,22 @@ final class OrderInvariants {
             );
         }
 
+        // Under the currently implemented lifecycle, an accepted Order can
+        // advance only to PREPARING and COMPLETED. Acceptance history cannot
+        // coexist with PLACED, REJECTED or CANCELLED current state.
+        // Revisit if a future business policy permits cancellation after acceptance.
+        if (accepted
+                && status != OrderStatus.ACCEPTED
+                && status != OrderStatus.PREPARING
+                && status != OrderStatus.COMPLETED) {
+            throw violation(
+                    OrderInvariantViolationException.Code
+                            .ACCEPTANCE_FACT_REQUIRES_ACCEPTED_OR_LATER_STATE,
+                    "RESTAURANT_ACCEPTED history requires ACCEPTED, PREPARING or COMPLETED current state, but was "
+                            + status
+            );
+        }
+
         if (preparationStarted
                 && status != OrderStatus.PREPARING
                 && status != OrderStatus.COMPLETED) {
