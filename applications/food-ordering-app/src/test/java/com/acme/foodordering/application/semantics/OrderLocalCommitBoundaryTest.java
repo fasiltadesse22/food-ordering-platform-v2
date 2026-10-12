@@ -111,6 +111,10 @@ class OrderLocalCommitBoundaryTest {
 
     private static final class FailBeforeReplaceRepository
             implements OrderRepository {
+        @Override public void createNew(Order order) {
+            throw new UnsupportedOperationException(
+                    "This controlled test adapter only exercises existing-Order operations");
+        }
 
         private final Order current;
 
@@ -135,6 +139,10 @@ class OrderLocalCommitBoundaryTest {
 
     private static final class RecordingRepository
             implements OrderRepository {
+        @Override public void createNew(Order order) {
+            throw new UnsupportedOperationException(
+                    "This controlled test adapter only exercises existing-Order operations");
+        }
 
         private Order current;
 

@@ -136,6 +136,11 @@ class OrderDomainFactDecisionBoundaryTest {
         private FaultInjectingRepository(boolean publishThenFail) {
             this.publishThenFail=publishThenFail;
         }
+        @Override public void createNew(Order order) {
+            if(!publishThenFail)throw new IllegalStateException("injected before save");
+            published=order;
+            throw new IllegalStateException("injected after save");
+        }
         @Override public void saveCurrent(Order order) {
             if(!publishThenFail)throw new IllegalStateException("injected before save");
             published=order;

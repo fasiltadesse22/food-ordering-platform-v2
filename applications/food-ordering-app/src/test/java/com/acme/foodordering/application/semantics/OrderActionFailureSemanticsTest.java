@@ -129,6 +129,10 @@ class OrderActionFailureSemanticsTest {
     }
 
     private static final class ReadFailingRepository implements OrderRepository {
+        @Override public void createNew(Order order) {
+            throw new UnsupportedOperationException(
+                    "This controlled test adapter only exercises existing-Order operations");
+        }
         @Override
         public void saveCurrent(Order order) {
             throw new AssertionError("save should not be reached");
@@ -141,6 +145,10 @@ class OrderActionFailureSemanticsTest {
     }
 
     private static final class WriteFailingRepository implements OrderRepository {
+        @Override public void createNew(Order order) {
+            throw new UnsupportedOperationException(
+                    "This controlled test adapter only exercises existing-Order operations");
+        }
         private final Order current;
 
         private WriteFailingRepository(Order current) {

@@ -1,6 +1,7 @@
 package com.acme.foodordering.adapter.out.inmemory;
 
 import com.acme.foodordering.application.port.out.OrderRepository;
+import com.acme.foodordering.application.port.out.OrderAlreadyExistsException;
 import com.acme.foodordering.domain.order.Order;
 import com.acme.foodordering.domain.order.OrderId;
 
@@ -11,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Current in-process authority for Order.
  *
- * saveCurrent replaces one map entry with one complete immutable Order
+ * createNew inserts only when the identity is absent; saveCurrent replaces one
  * representation. That is useful local publication behavior, but it is NOT:
  * - durable persistence;
  * - a multi-object/database transaction;
@@ -22,6 +23,18 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class InMemoryOrderRepository implements OrderRepository {
 
     private final Map<OrderId, Order> currentOrders = new ConcurrentHashMap<>();
+
+    /**
+     * Atomic absent-key insertion for this single process-owned map.
+     * A prior check-then-put would be unsafe under competing creates.
+     */
+    @Override
+    public void createNew(Order order) {
+        java.util.Objects.requireNonNull(order, "order must not be null");
+        if (currentOrders.putIfAbsent(order.id(), order) != null) {
+            throw new OrderAlreadyExistsException(order.id());
+        }
+    }
 
     @Override
     public void saveCurrent(Order order) {

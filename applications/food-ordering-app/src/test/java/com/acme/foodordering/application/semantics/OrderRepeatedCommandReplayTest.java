@@ -208,6 +208,10 @@ class OrderRepeatedCommandReplayTest {
 
     private static final class CountingRepository
             implements OrderRepository {
+        @Override public void createNew(Order order) {
+            throw new UnsupportedOperationException(
+                    "This controlled test adapter only exercises existing-Order operations");
+        }
 
         private final InMemoryOrderRepository delegate =
                 new InMemoryOrderRepository();
@@ -236,6 +240,10 @@ class OrderRepeatedCommandReplayTest {
      */
     private static final class CoordinatedDuplicateCancellationRepository
             implements OrderRepository {
+        @Override public void createNew(Order order) {
+            throw new UnsupportedOperationException(
+                    "This controlled test adapter only exercises existing-Order operations");
+        }
 
         private volatile Order current;
         private final CountDownLatch bothReads =

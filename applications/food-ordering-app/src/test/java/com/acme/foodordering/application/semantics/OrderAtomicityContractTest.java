@@ -78,6 +78,10 @@ class OrderAtomicityContractTest {
     }
 
     private static final class InProcessControlledRepository implements OrderRepository {
+        @Override public void createNew(Order order) {
+            throw new UnsupportedOperationException(
+                    "This controlled test adapter only exercises existing-Order operations");
+        }
         private Order current;
         private int saves;
         private boolean failBeforePublication;

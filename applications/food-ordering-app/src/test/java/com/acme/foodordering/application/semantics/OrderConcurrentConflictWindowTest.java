@@ -231,6 +231,10 @@ class OrderConcurrentConflictWindowTest {
      */
     private static final class CoordinatedConflictRepository
             implements OrderRepository {
+        @Override public void createNew(Order order) {
+            throw new UnsupportedOperationException(
+                    "This controlled test adapter only exercises existing-Order operations");
+        }
 
         private volatile Order current;
         private final OrderStatus firstSaveStatus;

@@ -14,6 +14,24 @@ import java.util.Optional;
  */
 public interface OrderRepository {
 
+    /**
+     * Publish a previously absent aggregate identity. If that identity already
+     * exists, throw OrderAlreadyExistsException without changing the current
+     * authoritative representation. Implementations must decide existence and
+     * publication as one atomic operation in their own authority scope.
+     *
+     * This is NOT request-level idempotency, database durability, nor a
+     * cross-process uniqueness guarantee for the in-memory implementation.
+     */
+    void createNew(Order order);
+
+    /**
+     * Legacy unconditional replacement used for existing Order evolutions.
+     * Deliberately NOT a stale-write-safe update: P13/P14/P17 negative-control
+     * behavior must remain visible until P16–P18 real DB conflict evolution.
+     * This method may currently insert absent identities. Do not use for
+     * new-Order creation; use createNew instead.
+     */
     void saveCurrent(Order order);
 
     Optional<Order> findCurrentById(OrderId orderId);
