@@ -4,3 +4,13 @@ spring:
 
 server:
   port: 8080
+
+# Explicit opt-in: the default backend remains memory for inherited negative controls.
+# P12 recovery checks start two JVMs with ORDER_REPOSITORY_BACKEND=postgres.
+foodordering:
+  repository:
+    backend: ${ORDER_REPOSITORY_BACKEND:memory}
+    postgres:
+      jdbc-url: ${ORDER_JDBC_URL:}
+      username: ${ORDER_DB_USERNAME:}
+      password: ${ORDER_DB_PASSWORD:}

@@ -8,8 +8,9 @@ import java.util.Optional;
 /**
  * Current-state authority for Order within the application boundary.
  *
- * The repository is authoritative for the application's current in-process Order
- * representation. It is not a durable database guarantee and it is not authority
+ * The selected backend defines authority scope: in-memory is process-local,
+ * while PostgreSQL supports durable committed state. This interface alone
+ * is not a durability or stale-write guarantee and it is not authority
  * for restaurant, payment, customer-account, or other external truths.
  */
 public interface OrderRepository {

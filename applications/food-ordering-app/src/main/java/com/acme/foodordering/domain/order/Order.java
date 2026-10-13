@@ -63,6 +63,23 @@ public final class Order {
         );
     }
 
+    /**
+     * Reconstitute an existing aggregate from authoritative persisted state.
+     * This is not a business placement and must not generate new workflow facts.
+     * All existing selected Order invariants are re-applied by the constructor.
+     */
+    public static Order reconstitute(
+            OrderId id, CustomerId customerId, RestaurantId restaurantId,
+            List<OrderLine> lines, OrderStatus status, Instant placedAt,
+            List<OrderWorkflowOccurrence> workflowOccurrences
+    ) {
+        Objects.requireNonNull(lines, "lines must not be null");
+        if (lines.isEmpty()) {
+            throw new IllegalArgumentException("persisted order must contain at least one line");
+        }
+        return new Order(id, customerId, restaurantId, lines, status, placedAt, workflowOccurrences);
+    }
+
     public Order recordPayment(Instant occurredAt) {
         return recordMilestone(
                 OrderWorkflowAction.PAYMENT_RECORDED,
