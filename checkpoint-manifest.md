@@ -1,21 +1,25 @@
-# Checkpoint Manifest — C1.2-P11 Final Candidate
+# Checkpoint Manifest — C1.2-P12 Final Candidate
 
-Title: Relational Persistence Design and Schema Evolution.
-Roadmap: Course 2 V8.0, Cluster 1.2, derived blueprint 1.2.11.
-Inherited verified C1.2-P10 at 716a48ebf4b1591c2dbcc6aa014f1ca335b9769b.
-Implementation candidate: 62ecbf4f5694d06d1aed0b5d678c6430253e33a2 verified CI 38356670113.
-Final commit: this documentation/evidence child commit is a candidate until its own exact CI verifies.
+Part 1.2.12 PostgreSQL Adapter, Reconstitution and Durable Recovery.
+Source contract V8.0 roadmap + derived Cluster 1.2 blueprint.
+Inherited C1.2-P11 frozen 1defeffc57170d86b5c0afc122f48b8f5ef826a2.
+Implementation success SHA c39ee8b50d491b4e6f0f18333b32113ad6581628 CI 38359212874.
+This final documentation child commit requires its own CI verification before checkpoint freeze.
 
-Project evolution Type B/C/A:
-- Production SQL: V1__create_order_aggregate_schema.sql, one Order represented across three related tables.
-- Test-scoped PostgreSQL JDBC, Flyway, PostgreSQL Testcontainers.
-- 8 SQL integration tests with real PostgreSQL database (including P13 negative-control).
-- ADR-0030, scenario, experiment/evidence documentation, manifest.
-- Runtime Spring app wiring remains InMemoryOrderRepository. No durable application behavior yet.
+Production implementation:
+- PostgresOrderRepository JDBC adapter (three owned tables, create-only SQL root, legacy unconditional successor UPSERT, transactional full write, ordered reads).
+- Order.reconstitute selected invariant validation.
+- Backend property env opt-in postgres, default in-memory; fail startup on DB failure.
+- Two persistence-specific exception categories.
+- Runtime Flyway / JDBC dependencies (Testcontainers tests only).
+- App services and existing Order HTTP endpoints unchanged.
+- Nine real PostgreSQL adapter integration tests.
+- Real JVM A SIGKILL JVM B same DB HTTP recovered CANCELLED through new script and GitHub Actions postgres service.
+- Original P18 memory negative unchanged and still executed.
+- ADR-0031, scenario, evidence, experiment ledger.
 
-Critical guarantees:
-PostgreSQL UUID PK rejects duplicate Order identity, child FK rejects orphan, per-Order child position PK preserves unique slot, Flyway V1 once and repeat migration no-op.
-Non-guarantees:
-No domain model reconstruction from DB yet, no real app PostgreSQL reads/writes, no atomic multi-table aggregate save, no price/quantity full integrity CHECK, no currency/rounding policy, no optimistic version, no Kafka/outbox, no external payment integration.
-Preserve P18 real process-loss failure through CI.
-P12 MUST implement actual runtime PostgreSQL repository, controlled reconstitution, migrations on startup/managed lifecycle, and repeat real P18 process replacement against same DB to demonstrate recovery.
+Measured guarantees:
+P12 process A accepted Order remains retrievable from B after app SIGKILL, status CANCELLED, same identity/customer/restaurant/line details/total. Real JDBC Testcontainers tests recover complete local history, including payment/refund-request milestones.
+Not guarantees:
+No provider payment truth; not a PostgreSQL host crash/DR test. saveCurrent still stale last-write-wins/upsert, no command dedup. Read may tear across statements under concurrent writes at READ COMMITTED; database constraints incomplete; no pool/scaling benchmark; no full causal event validation. Timestamp microsecond precision caveat.
+Next P13 Relational Constraints and Defense-in-Depth Integrity. Continue same production app and verified frozen P12 branch, not main.
