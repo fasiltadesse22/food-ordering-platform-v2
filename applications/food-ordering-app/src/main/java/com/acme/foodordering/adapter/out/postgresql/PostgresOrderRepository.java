@@ -181,9 +181,11 @@ public final class PostgresOrderRepository implements OrderRepository {
                     String status=rows.getString("status");
                     Instant placedAt=rows.getObject("placed_at",OffsetDateTime.class).toInstant();
                     // Assemble while connection is open; no domain command replay.
-                    List<OrderLine> lines=loadLines(db,id);
-                    List<OrderWorkflowOccurrence> history=loadHistory(db,id);
+                    // Invalid stored values, enums or domain-invariant failures
+                    // are corruption, NOT HTTP 400 or ORDER_NOT_FOUND.
                     try {
+                        List<OrderLine> lines=loadLines(db,id);
+                        List<OrderWorkflowOccurrence> history=loadHistory(db,id);
                         return Optional.of(Order.reconstitute(
                                 id,new CustomerId(customer),new RestaurantId(restaurant),
                                 lines,OrderStatus.valueOf(status),placedAt,history));

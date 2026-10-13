@@ -7,6 +7,18 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: ordering_p12
+          POSTGRES_USER: ordering
+          POSTGRES_PASSWORD: test-only-ci-password
+        ports:
+          - 15432:5432
+        options: >-
+          --health-cmd "pg_isready -U ordering -d ordering_p12"
+          --health-interval 5s --health-timeout 5s --health-retries 20
 
     steps:
       - name: Checkout
@@ -24,3 +36,10 @@ jobs:
 
       - name: Verify P18 process restart durability experiment
         run: experiments/cluster-1.1/p18-process-restart-durability.sh
+
+      - name: Verify P12 durable PostgreSQL recovery across SIGKILL
+        env:
+          P12_JDBC_URL: jdbc:postgresql://127.0.0.1:15432/ordering_p12
+          P12_DB_USERNAME: ordering
+          P12_DB_PASSWORD: test-only-ci-password
+        run: bash experiments/cluster-1.2/p12-postgresql-process-restart.sh
