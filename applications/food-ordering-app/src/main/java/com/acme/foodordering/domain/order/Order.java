@@ -19,6 +19,7 @@ public final class Order {
     private final OrderStatus status;
     private final Instant placedAt;
     private final List<OrderWorkflowOccurrence> workflowOccurrences;
+    private final long version;
 
     private Order(
             OrderId id,
@@ -27,8 +28,11 @@ public final class Order {
             List<OrderLine> lines,
             OrderStatus status,
             Instant placedAt,
-            List<OrderWorkflowOccurrence> workflowOccurrences
+            List<OrderWorkflowOccurrence> workflowOccurrences,
+            long version
     ) {
+        if (version < 0) throw new IllegalArgumentException("Order version must be nonnegative");
+        this.version = version;
         this.id = Objects.requireNonNull(id);
         this.customerId = Objects.requireNonNull(customerId);
         this.restaurantId = Objects.requireNonNull(restaurantId);
@@ -59,7 +63,8 @@ public final class Order {
                 lines,
                 OrderStatus.PLACED,
                 placedAt,
-                List.of()
+                List.of(),
+                0L
         );
     }
 
@@ -77,7 +82,15 @@ public final class Order {
         if (lines.isEmpty()) {
             throw new IllegalArgumentException("persisted order must contain at least one line");
         }
-        return new Order(id, customerId, restaurantId, lines, status, placedAt, workflowOccurrences);
+        return reconstitute(id, customerId, restaurantId, lines, status, placedAt, workflowOccurrences, 0L);
+    }
+
+    public static Order reconstitute(OrderId id, CustomerId customerId, RestaurantId restaurantId,
+            List<OrderLine> lines, OrderStatus status, Instant placedAt,
+            List<OrderWorkflowOccurrence> workflowOccurrences, long version) {
+        Objects.requireNonNull(lines);
+        if (lines.isEmpty()) throw new IllegalArgumentException("persisted order must contain at least one line");
+        return new Order(id, customerId, restaurantId, lines, status, placedAt, workflowOccurrences, version);
     }
 
     public Order recordPayment(Instant occurredAt) {
@@ -149,7 +162,8 @@ public final class Order {
                 replacementLines,
                 status,
                 placedAt,
-                updatedWorkflow
+                updatedWorkflow,
+                Math.addExact(version, 1L)
         );
     }
 
@@ -289,10 +303,12 @@ public final class Order {
                 lines,
                 evolution.nextStatus(),
                 placedAt,
-                updated
+                updated,
+                Math.addExact(version, 1L)
         );
     }
 
+    public long version() { return version; }
     public OrderId id() { return id; }
     public CustomerId customerId() { return customerId; }
     public RestaurantId restaurantId() { return restaurantId; }
