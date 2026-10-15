@@ -19,7 +19,7 @@ import java.util.Optional;
  * P15: stores one immutable Order across the V1/V2 relational schema and
  * groups root/owned child writes in a single local JDBC transaction.
  * Distinguishes a pre-commit SQL error from a failed COMMIT acknowledgement.
- * saveCurrent deliberately remains LAST-WRITER-WINS
+ * Read-side P16 uses a read-only REPEATABLE READ snapshot for full aggregate\n * reconstruction. Writes remain unversioned LAST-WRITER-WINS
  * without a version/CAS condition (P16/P17 negative controls).
  *
  * Connections are opened per operation: no pool or scaling claim at P12.
@@ -29,6 +29,13 @@ public final class PostgresOrderRepository implements OrderRepository {
     private final String username;
     private final String password;
     private final ConnectionSource connectionSource;
+    private final RootReadObserver rootReadObserver;
+
+    /** Test-only deterministic scheduling after first root SELECT; production is NOOP. */
+    @FunctionalInterface
+    interface RootReadObserver {
+        void afterRootRead(OrderId id);
+    }
 
     /**
      * A narrow package-private connection seam permits actual JDBC commit
@@ -42,15 +49,23 @@ public final class PostgresOrderRepository implements OrderRepository {
 
     public PostgresOrderRepository(String url, String username, String password) {
         this(url, username, password,
-                () -> DriverManager.getConnection(url, username, password));
+                () -> DriverManager.getConnection(url, username, password),
+                id -> {});
     }
 
     PostgresOrderRepository(
             String url, String username, String password, ConnectionSource connectionSource) {
+        this(url, username, password, connectionSource, id -> {});
+    }
+
+    PostgresOrderRepository(
+            String url, String username, String password, ConnectionSource connectionSource,
+            RootReadObserver rootReadObserver) {
         this.url = requireNonBlank(url, "jdbc-url");
         this.username = requireNonBlank(username, "username");
         this.password = Objects.requireNonNull(password, "password");
         this.connectionSource = Objects.requireNonNull(connectionSource);
+        this.rootReadObserver = Objects.requireNonNull(rootReadObserver);
         // Fail startup rather than silently switching to in-memory authority.
         Flyway.configure().dataSource(url, username, password)
                 .locations("classpath:db/migration").load().migrate();
@@ -195,33 +210,59 @@ public final class PostgresOrderRepository implements OrderRepository {
         }
     }
 
+    /**
+     * One Order must be reconstituted from one committed snapshot, even though
+     * its root and owned collections require three SELECT statements.
+     * PostgreSQL READ COMMITTED takes a fresh snapshot per statement and can
+     * produce a root/history combination that was never committed together.
+     *
+     * A read-only REPEATABLE READ transaction pins one MVCC snapshot for all
+     * three SELECTs. It does NOT lock the Order, promise freshest state,
+     * guard later writes, or provide SERIALIZABLE business decisions.
+     */
     @Override
     public Optional<Order> findCurrentById(OrderId id) {
         Objects.requireNonNull(id,"id");
         try (var db=connection()) {
-            try (var ps=db.prepareStatement(
-                    "SELECT customer_id,restaurant_id,status,placed_at FROM orders WHERE id=?")) {
-                ps.setObject(1,id.value());
-                try (var rows=ps.executeQuery()) {
-                    if(!rows.next()) return Optional.empty();
-                    String customer=rows.getString("customer_id");
-                    String restaurant=rows.getString("restaurant_id");
-                    String status=rows.getString("status");
-                    Instant placedAt=rows.getObject("placed_at",OffsetDateTime.class).toInstant();
-                    // JDBC conversion and domain validation are separate
-                    // responsibilities, owned by the persistence mapper.
-                    List<OrderLine> lines = loadLines(db,id);
-                    List<OrderWorkflowOccurrence> history = loadHistory(db,id);
-                    return Optional.of(PostgresOrderMapper.reconstitute(
-                            id, customer, restaurant, status, placedAt,
-                            lines, history));
+            // Connection settings must be established before executing SQL.
+            db.setReadOnly(true);
+            db.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
+            db.setAutoCommit(false);
+            try {
+                Optional<Order> result;
+                try (var ps=db.prepareStatement(
+                        "SELECT customer_id,restaurant_id,status,placed_at FROM orders WHERE id=?")) {
+                    ps.setObject(1,id.value());
+                    try (var rows=ps.executeQuery()) {
+                        if(!rows.next()) {
+                            result=Optional.empty();
+                        } else {
+                            String customer=rows.getString("customer_id");
+                            String restaurant=rows.getString("restaurant_id");
+                            String status=rows.getString("status");
+                            Instant placedAt=rows.getObject("placed_at",OffsetDateTime.class).toInstant();
+
+                            // Deterministic test-only interleaving seam: the
+                            // production observer is always NOOP.
+                            rootReadObserver.afterRootRead(id);
+
+                            List<OrderLine> lines=loadLines(db,id);
+                            List<OrderWorkflowOccurrence> history=loadHistory(db,id);
+                            result=Optional.of(PostgresOrderMapper.reconstitute(
+                                    id,customer,restaurant,status,placedAt,lines,history));
+                        }
+                    }
                 }
+                db.commit(); // read-only; closes the transaction snapshot.
+                return result;
+            } catch (SQLException | RuntimeException e) {
+                rollback(db,e);
+                throw e;
             }
         } catch (SQLException e) {
             throw new OrderPersistenceException("read Order failed",e);
         }
     }
-
 
     private static List<OrderLine> loadLines(Connection db, OrderId id) throws SQLException {
         try (var ps=db.prepareStatement(
