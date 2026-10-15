@@ -16,10 +16,10 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * P12 durable Order state adapter. It stores one immutable Order across the
- * three V1 relational tables. Uses one local JDBC transaction per aggregate
- * write to prevent partial committed state; P15 investigates real transaction
- * failure windows in depth. saveCurrent deliberately remains LAST-WRITER-WINS
+ * P15: stores one immutable Order across the V1/V2 relational schema and
+ * groups root/owned child writes in a single local JDBC transaction.
+ * Distinguishes a pre-commit SQL error from a failed COMMIT acknowledgement.
+ * saveCurrent deliberately remains LAST-WRITER-WINS
  * without a version/CAS condition (P16/P17 negative controls).
  *
  * Connections are opened per operation: no pool or scaling claim at P12.
@@ -28,11 +28,29 @@ public final class PostgresOrderRepository implements OrderRepository {
     private final String url;
     private final String username;
     private final String password;
+    private final ConnectionSource connectionSource;
+
+    /**
+     * A narrow package-private connection seam permits actual JDBC commit
+     * acknowledgement failure injection without a fake database or changing
+     * the public OrderRepository contract.
+     */
+    @FunctionalInterface
+    interface ConnectionSource {
+        Connection open() throws SQLException;
+    }
 
     public PostgresOrderRepository(String url, String username, String password) {
+        this(url, username, password,
+                () -> DriverManager.getConnection(url, username, password));
+    }
+
+    PostgresOrderRepository(
+            String url, String username, String password, ConnectionSource connectionSource) {
         this.url = requireNonBlank(url, "jdbc-url");
         this.username = requireNonBlank(username, "username");
         this.password = Objects.requireNonNull(password, "password");
+        this.connectionSource = Objects.requireNonNull(connectionSource);
         // Fail startup rather than silently switching to in-memory authority.
         Flyway.configure().dataSource(url, username, password)
                 .locations("classpath:db/migration").load().migrate();
@@ -44,7 +62,7 @@ public final class PostgresOrderRepository implements OrderRepository {
     }
 
     private Connection connection() throws SQLException {
-        return DriverManager.getConnection(url, username, password);
+        return connectionSource.open();
     }
 
     @Override
@@ -52,17 +70,22 @@ public final class PostgresOrderRepository implements OrderRepository {
         Objects.requireNonNull(order, "order");
         try (var db = connection()) {
             db.setAutoCommit(false);
+            boolean commitAttempted = false;
             try {
                 insertRoot(db, order);
                 insertLines(db, order);
                 insertHistory(db, order);
+                commitAttempted = true;
                 db.commit();
             } catch (SQLException e) {
                 rollback(db, e);
+                if (commitAttempted) {
+                    throw new OrderCommitOutcomeUnknownException("create Order", order.id(), e);
+                }
                 if ("23505".equals(e.getSQLState())) {
                     throw new OrderAlreadyExistsException(order.id());
                 }
-                throw new OrderPersistenceException("create Order failed", e);
+                throw new OrderPersistenceException("create Order failed before COMMIT", e);
             } catch (RuntimeException e) {
                 rollback(db, e);
                 throw e;
@@ -77,6 +100,7 @@ public final class PostgresOrderRepository implements OrderRepository {
         Objects.requireNonNull(order, "order");
         try (var db = connection()) {
             db.setAutoCommit(false);
+            boolean commitAttempted = false;
             try {
                 // Intentional P10-compatible upsert: no stale state/version guard.
                 try (var ps = db.prepareStatement("""
@@ -101,10 +125,14 @@ public final class PostgresOrderRepository implements OrderRepository {
                 }
                 insertLines(db, order);
                 insertHistory(db, order);
+                commitAttempted = true;
                 db.commit();
             } catch (SQLException e) {
                 rollback(db,e);
-                throw new OrderPersistenceException("save Order failed",e);
+                if (commitAttempted) {
+                    throw new OrderCommitOutcomeUnknownException("save Order", order.id(), e);
+                }
+                throw new OrderPersistenceException("save Order failed before COMMIT",e);
             } catch (RuntimeException e) {
                 rollback(db,e);
                 throw e;
