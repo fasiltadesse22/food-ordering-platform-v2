@@ -42,7 +42,7 @@ class OrderCancellationAcceptanceRaceTest {
     void sequentialCancellationThenAcceptanceRejectsRestaurantAgainstFreshCancelledAuthority() {
         var repository = new InMemoryOrderRepository();
         var placed = placedOrder();
-        repository.saveCurrent(placed);
+        repository.createNew(placed);
         var service = new OrderWorkflowService(repository, CLOCK);
 
         var cancellation = service.recordCancellation(
@@ -71,7 +71,7 @@ class OrderCancellationAcceptanceRaceTest {
     void sequentialAcceptanceThenCancellationRejectsCustomerAgainstFreshAcceptedAuthority() {
         var repository = new InMemoryOrderRepository();
         var placed = placedOrder();
-        repository.saveCurrent(placed);
+        repository.createNew(placed);
         var service = new OrderWorkflowService(repository, CLOCK);
 
         var acceptance = service.recordRestaurantAcceptance(

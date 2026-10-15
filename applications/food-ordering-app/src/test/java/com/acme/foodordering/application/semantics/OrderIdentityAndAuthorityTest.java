@@ -34,7 +34,7 @@ class OrderIdentityAndAuthorityTest {
                 .isNotSameAs(secondIdentifierObject);
 
         var order = order(firstIdentifierObject, 1);
-        repository.saveCurrent(order);
+        repository.createNew(order);
 
         var loaded = repository.findCurrentById(secondIdentifierObject);
 
@@ -52,13 +52,15 @@ class OrderIdentityAndAuthorityTest {
         assertThat(firstRepresentation).isNotSameAs(sameIdentityDifferentObject);
         assertThat(firstRepresentation.id()).isEqualTo(sameIdentityDifferentObject.id());
 
-        repository.saveCurrent(firstRepresentation);
-        repository.saveCurrent(sameIdentityDifferentObject);
+        repository.createNew(firstRepresentation);
+        var successor=firstRepresentation.modifyLines(firstRepresentation.customerId(),
+                sameIdentityDifferentObject.lines(),PLACED_AT.plusSeconds(1));
+        repository.saveCurrent(successor);
 
         var current = repository.findCurrentById(identity).orElseThrow();
 
         assertThat(repository.size()).isEqualTo(1);
-        assertThat(current).isSameAs(sameIdentityDifferentObject);
+        assertThat(current).isSameAs(successor);
         assertThat(current.id()).isEqualTo(firstRepresentation.id());
     }
 
@@ -68,13 +70,15 @@ class OrderIdentityAndAuthorityTest {
         var identity = OrderId.from(ORDER_ID);
 
         var firstRepresentation = order(identity, 1);
-        repository.saveCurrent(firstRepresentation);
+        repository.createNew(firstRepresentation);
 
         var earlierSnapshot = OrderSnapshot.from(
                 repository.findCurrentById(identity).orElseThrow()
         );
 
-        var laterCurrentRepresentation = order(OrderId.from(ORDER_ID), 2);
+        var laterCurrentRepresentation = firstRepresentation.modifyLines(
+                firstRepresentation.customerId(),order(OrderId.from(ORDER_ID),2).lines(),
+                PLACED_AT.plusSeconds(1));
         repository.saveCurrent(laterCurrentRepresentation);
 
         var current = repository.findCurrentById(identity).orElseThrow();

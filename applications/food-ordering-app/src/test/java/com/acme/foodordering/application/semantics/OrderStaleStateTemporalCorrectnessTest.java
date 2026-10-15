@@ -34,10 +34,10 @@ class OrderStaleStateTemporalCorrectnessTest {
             new RestaurantId("restaurant-1");
 
     @Test
-    void modificationBasedOnPrePaymentSnapshotCanOverwriteLaterPaymentFact() {
+    void staleModificationCannotOverwritePaymentHistory() {
         var repository = new InMemoryOrderRepository();
         var placed = placedOrder();
-        repository.saveCurrent(placed);
+        repository.createNew(placed);
         var service = new OrderWorkflowService(repository, CLOCK);
 
         var staleEditableSnapshot =
@@ -64,28 +64,23 @@ class OrderStaleStateTemporalCorrectnessTest {
                 NOW.plusSeconds(60)
         );
 
-        repository.saveCurrent(staleModification);
+        assertThatThrownBy(()->repository.saveCurrent(staleModification))
+                .isInstanceOf(com.acme.foodordering.application.port.out.StaleOrderVersionException.class);
 
         var authoritative =
                 repository.findCurrentById(placed.id()).orElseThrow();
-
-        assertThat(authoritative.status())
-                .isEqualTo(OrderStatus.PLACED);
-        assertThat(authoritative.lines())
-                .isEqualTo(replacementLines());
+        assertThat(authoritative.status()).isEqualTo(OrderStatus.PLACED);
+        assertThat(authoritative.lines()).isEqualTo(placed.lines());
         assertThat(authoritative.workflowOccurrences())
                 .extracting(occurrence -> occurrence.action())
-                .containsExactly(OrderWorkflowAction.ORDER_MODIFIED);
-        assertThat(authoritative.workflowOccurrences())
-                .extracting(occurrence -> occurrence.action())
-                .doesNotContain(OrderWorkflowAction.PAYMENT_RECORDED);
+                .containsExactly(OrderWorkflowAction.PAYMENT_RECORDED);
     }
 
     @Test
-    void paymentDecisionBasedOnPreCancellationSnapshotCanResurrectPlacedAndEraseCancellation() {
+    void stalePaymentCannotResurrectCancelledOrder() {
         var repository = new InMemoryOrderRepository();
         var placed = placedOrder();
-        repository.saveCurrent(placed);
+        repository.createNew(placed);
         var service = new OrderWorkflowService(repository, CLOCK);
 
         var stalePayableSnapshot =
@@ -108,26 +103,21 @@ class OrderStaleStateTemporalCorrectnessTest {
         var stalePayment =
                 stalePayableSnapshot.recordPayment(NOW.plusSeconds(60));
 
-        repository.saveCurrent(stalePayment);
-
+        assertThatThrownBy(()->repository.saveCurrent(stalePayment))
+                .isInstanceOf(com.acme.foodordering.application.port.out.StaleOrderVersionException.class);
         var authoritative =
                 repository.findCurrentById(placed.id()).orElseThrow();
-
-        assertThat(authoritative.status())
-                .isEqualTo(OrderStatus.PLACED);
+        assertThat(authoritative.status()).isEqualTo(OrderStatus.CANCELLED);
         assertThat(authoritative.workflowOccurrences())
                 .extracting(occurrence -> occurrence.action())
-                .containsExactly(OrderWorkflowAction.PAYMENT_RECORDED);
-        assertThat(authoritative.workflowOccurrences())
-                .extracting(occurrence -> occurrence.action())
-                .doesNotContain(OrderWorkflowAction.ORDER_CANCELLED);
+                .containsExactly(OrderWorkflowAction.ORDER_CANCELLED);
     }
 
     @Test
     void freshPaymentAfterCancellationIsCurrentlyAllowedWithoutResurrectingPlaced() {
         var repository = new InMemoryOrderRepository();
         var placed = placedOrder();
-        repository.saveCurrent(placed);
+        repository.createNew(placed);
         var service = new OrderWorkflowService(repository, CLOCK);
 
         assertAccepted(service.recordCancellation(
@@ -153,7 +143,7 @@ class OrderStaleStateTemporalCorrectnessTest {
     void guardCanRejectFreshAcceptedOrderWhileSameModificationPassesAgainstStalePlacedCopy() {
         var repository = new InMemoryOrderRepository();
         var placed = placedOrder();
-        repository.saveCurrent(placed);
+        repository.createNew(placed);
         var service = new OrderWorkflowService(repository, CLOCK);
 
         var stalePlacedCopyA =
@@ -196,21 +186,14 @@ class OrderStaleStateTemporalCorrectnessTest {
         assertThat(staleModification.status())
                 .isEqualTo(OrderStatus.PLACED);
 
-        repository.saveCurrent(staleModification);
-
+        assertThatThrownBy(()->repository.saveCurrent(staleModification))
+                .isInstanceOf(com.acme.foodordering.application.port.out.StaleOrderVersionException.class);
         var authoritativeAfterStaleSave =
                 repository.findCurrentById(placed.id()).orElseThrow();
-
-        assertThat(authoritativeAfterStaleSave.status())
-                .isEqualTo(OrderStatus.PLACED);
+        assertThat(authoritativeAfterStaleSave.status()).isEqualTo(OrderStatus.ACCEPTED);
         assertThat(authoritativeAfterStaleSave.workflowOccurrences())
                 .extracting(occurrence -> occurrence.action())
-                .containsExactly(OrderWorkflowAction.ORDER_MODIFIED);
-        assertThat(authoritativeAfterStaleSave.workflowOccurrences())
-                .extracting(occurrence -> occurrence.action())
-                .doesNotContain(
-                        OrderWorkflowAction.RESTAURANT_ACCEPTED
-                );
+                .containsExactly(OrderWorkflowAction.RESTAURANT_ACCEPTED);
     }
 
     private static void assertAccepted(OrderActionResult result) {

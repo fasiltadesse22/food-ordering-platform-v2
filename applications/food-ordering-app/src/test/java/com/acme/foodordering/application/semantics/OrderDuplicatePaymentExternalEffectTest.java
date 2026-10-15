@@ -36,7 +36,7 @@ class OrderDuplicatePaymentExternalEffectTest {
     void repeatedLocalPaymentCommandCurrentlyRecordsDuplicatePaymentFacts() {
         var repository = new InMemoryOrderRepository();
         var placed = placedOrder();
-        repository.saveCurrent(placed);
+        repository.createNew(placed);
         var workflow = new OrderWorkflowService(repository, CLOCK);
 
         var first = workflow.recordPayment(placed.id());
@@ -60,7 +60,7 @@ class OrderDuplicatePaymentExternalEffectTest {
     void chargeThenRecordWithoutReplayIdentityCanDuplicateBothExternalChargeAndLocalPaymentFact() {
         var repository = new InMemoryOrderRepository();
         var placed = placedOrder();
-        repository.saveCurrent(placed);
+        repository.createNew(placed);
 
         var workflow = new OrderWorkflowService(repository, CLOCK);
         var provider = new RecordingPaymentAuthority();
@@ -89,7 +89,7 @@ class OrderDuplicatePaymentExternalEffectTest {
     void providerCanCommitChargeThenLoseResponseSoRetryChargesTwiceWhileLocalOrderRecordsPaymentOnce() {
         var repository = new InMemoryOrderRepository();
         var placed = placedOrder();
-        repository.saveCurrent(placed);
+        repository.createNew(placed);
 
         var workflow = new OrderWorkflowService(repository, CLOCK);
         var provider = new ChargeThenLoseFirstResponseAuthority();
@@ -128,7 +128,7 @@ class OrderDuplicatePaymentExternalEffectTest {
     void recordThenChargeReversesTheFailureWindowAndCanLeaveLocalPaymentFactWithoutExternalCharge() {
         var repository = new InMemoryOrderRepository();
         var placed = placedOrder();
-        repository.saveCurrent(placed);
+        repository.createNew(placed);
 
         var workflow = new OrderWorkflowService(repository, CLOCK);
         var provider = new FailBeforeChargeAuthority();

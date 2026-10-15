@@ -67,8 +67,8 @@ class OrderIdentityContinuityContractTest {
         assertThat(first.placedAt()).isEqualTo(second.placedAt());
         assertThat(first.id()).isNotEqualTo(second.id());
 
-        repository.saveCurrent(first);
-        repository.saveCurrent(second);
+        repository.createNew(first);
+        repository.createNew(second);
 
         assertThat(repository.size()).isEqualTo(2);
         assertThat(repository.findCurrentById(first.id())).containsSame(first);
@@ -96,7 +96,7 @@ class OrderIdentityContinuityContractTest {
         var identity = OrderId.from(FIRST_ID);
         var order = placed(identity);
 
-        processARepository.saveCurrent(order);
+        processARepository.createNew(order);
 
         assertThat(processARepository.findCurrentById(OrderId.from(FIRST_ID)))
                 .containsSame(order);
@@ -111,7 +111,7 @@ class OrderIdentityContinuityContractTest {
     void currentAuthorityCanAdvanceWhileEarlierSameIdentityRepresentationRemainsLocallyUsable() {
         var repository = new InMemoryOrderRepository();
         var original = placed(OrderId.from(FIRST_ID));
-        repository.saveCurrent(original);
+        repository.createNew(original);
 
         var accepted = original.recordRestaurantAcceptance(
                 RESTAURANT, PLACED_AT.plusSeconds(10)

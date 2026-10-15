@@ -33,8 +33,8 @@ class OrderEntityIdentityEqualityTest {
         var first = order("123e4567-e89b-12d3-a456-426614174081");
         var second = order("123e4567-e89b-12d3-a456-426614174082");
         var repo = new InMemoryOrderRepository();
-        repo.saveCurrent(first);
-        repo.saveCurrent(second);
+        repo.createNew(first);
+        repo.createNew(second);
         assertThat(first.id()).isNotEqualTo(second.id());
         assertThat(first.status()).isEqualTo(second.status());
         assertThat(first.lines()).isEqualTo(second.lines());

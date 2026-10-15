@@ -40,7 +40,7 @@ class OrderConcurrentConflictWindowTest {
     void sequentialAcceptThenRejectUsesFreshAuthorityAndRejectsSecondDecision() {
         var repository = new InMemoryOrderRepository();
         var placed = placedOrder();
-        repository.saveCurrent(placed);
+        repository.createNew(placed);
 
         var service = new OrderWorkflowService(repository, CLOCK);
 

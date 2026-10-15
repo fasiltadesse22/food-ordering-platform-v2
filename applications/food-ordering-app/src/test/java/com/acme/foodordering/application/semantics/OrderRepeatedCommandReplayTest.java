@@ -42,7 +42,7 @@ class OrderRepeatedCommandReplayTest {
     void lostCancellationSuccessFollowedByRetryConvergesStateButDoesNotReplayOriginalSuccessResult() {
         var repository = new CountingRepository();
         var placed = placedOrder();
-        repository.saveCurrent(placed);
+        repository.createNew(placed);
 
         var service = new OrderWorkflowService(repository, CLOCK);
 
@@ -134,7 +134,7 @@ class OrderRepeatedCommandReplayTest {
     void repeatedRefundRequestIsExplicitlySuppressedButDoesNotReplayTheFirstAcceptedOutcome() {
         var repository = new InMemoryOrderRepository();
         var placed = placedOrder();
-        repository.saveCurrent(placed);
+        repository.createNew(placed);
         var service = new OrderWorkflowService(repository, CLOCK);
 
         assertAcceptedWithStatus(
@@ -209,8 +209,8 @@ class OrderRepeatedCommandReplayTest {
     private static final class CountingRepository
             implements OrderRepository {
         @Override public void createNew(Order order) {
-            throw new UnsupportedOperationException(
-                    "This controlled test adapter only exercises existing-Order operations");
+            delegate.createNew(order);
+            saveCount.incrementAndGet();
         }
 
         private final InMemoryOrderRepository delegate =
