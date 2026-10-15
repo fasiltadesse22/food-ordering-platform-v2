@@ -1,18 +1,14 @@
-# Checkpoint Manifest — C1.2-P13 Final Candidate
+# Checkpoint Manifest — C1.2-P14 Final Candidate
 
-Part: 1.2.13 Relational Constraints and Defense-in-Depth Integrity.
-Source: Course 2 V8.0 and derived Cluster 1.2 blueprint; preserve uniform depth.
-Inherited verified P12: f28facdf54366f689a2a5d278864a8d8dcc754bb.
-Implementation candidate: 2dc184df0fc1e50726ae814507b7862460abdb00; CI success 38694233940.
-Final documentation/evidence commit is not considered frozen until its own exact CI and frozen-ref CI pass.
+Title: Persistence Mapping, Aggregate Reconstitution and Representation Trade-offs.
+Roadmap V8.0 Cluster 1.2 / derived P14 blueprint.
+Inherited verified checkpoints/C1.2-P13 at 9fd1fe7c3c9a0608c29af5c8397e8bfc3ae9588e.
+Implementation+test candidate 8db856eae5d0db83170aad625e66c37b44668aac CI 38695864088 success.
+This docs/evidence child commit is candidate until exact-sha CI + frozen-branch CI verified.
 
-Changes:
-- V2__add_order_local_integrity_constraints.sql: 11 PostgreSQL row-local checks, no rewrite of V1.
-- Twelve new direct SQL Testcontainers integrity+dirty migration experiments.
-- P11 schema test now V1+V2 expectations; prior negative invalid line case becomes positive 23514 check.
-- P12 JDBC adapter test now confirms invalid qty rejected in SQL and original valid row unchanged.
-- ADR-0032, scenario, experiment ledger, evidence, checkpoint manifest.
-Preserved original P18 memory fail after restart and P12 positive PostgreSQL recovery.
-Known deferred failures: invalid COMPLETED without history accepted by DB, missing child lines accepted by DB, read snapshot inconsistency, stale successor overwrite, non-idempotent placement retries, local payment != provider financial truth.
-Do NOT introduce version/CAS, JPA mapping redesign, triggers duplicating lifecycle, microservices or extra business tables in this part.
-Next P14: Persistence Mapping, Aggregate Reconstitution and Representation Trade-offs; inherit frozen C1.2-P13 SHA not main.
+Type B production mapping evolution + Type C controlled PostgreSQL tests + Type A ADR/evidence.
+Changed PostgresOrderRepository read decoding and added PostgresOrderMapper with persisted list contiguous position checks and exception classification. No schema, business-domain invariant or service boundary change. 7 new real PostgreSQL tests, aggregate and JDBC regression preserved.
+Observed candidate CI 175 Maven tests PASS, P18 process-loss negative, P12 durable positive. PostgreSQL BigDecimal 5.5000 scale=4 after retrieval in tested case; Java Instant .123456789 -> .123457, delta211ns. Two collection SQL JOIN 3x3=9 rows.
+
+Open gaps: multiple SELECTs across READ COMMITTED commits may tear, unguarded stale successors, complete collection replacement write amplification, no Money/clock precision policy, no complete historical causality, no external provider truth or separate Restaurant/Payment aggregate tables.
+Next P15: Local Transactions, Commit, Rollback and Atomic Persistence. Inherit verified P14 SHA (not main); perform actual injected JDBC/SQL commit/rollback experiments. P16 dedicated isolation work, P17 optimistic concurrency, P18 conflict resolution.
