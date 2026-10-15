@@ -101,7 +101,7 @@ public final class PostgresOrderRepository implements OrderRepository {
                 if ("23505".equals(e.getSQLState())) {
                     throw new OrderAlreadyExistsException(order.id());
                 }
-                throw new OrderPersistenceException("create Order failed before COMMIT", e);
+                throw beforeCommitFailure("create Order", order.id(), e);
             } catch (RuntimeException e) {
                 rollback(db, e);
                 throw e;
@@ -157,7 +157,7 @@ public final class PostgresOrderRepository implements OrderRepository {
                 if (commitAttempted) {
                     throw new OrderCommitOutcomeUnknownException("save Order", order.id(), e);
                 }
-                throw new OrderPersistenceException("save Order failed before COMMIT",e);
+                throw beforeCommitFailure("save Order",order.id(),e);
             } catch (RuntimeException e) {
                 rollback(db,e);
                 throw e;
@@ -165,6 +165,24 @@ public final class PostgresOrderRepository implements OrderRepository {
         } catch (SQLException e) {
             throw new OrderPersistenceException("save Order connection failed",e);
         }
+    }
+
+    /**
+     * Only classify SQL errors known to occur BEFORE COMMIT. Never infer
+     * rollback from a lost COMMIT acknowledgement (P15 remains authoritative).
+     */
+    private static OrderPersistenceException beforeCommitFailure(
+            String operation, OrderId id, SQLException failure) {
+        return switch (failure.getSQLState()) {
+            case "40001" -> new OrderDatabaseConcurrencyException(
+                    operation,id,OrderDatabaseConcurrencyException.Kind.SERIALIZATION_FAILURE,failure);
+            case "40P01" -> new OrderDatabaseConcurrencyException(
+                    operation,id,OrderDatabaseConcurrencyException.Kind.DEADLOCK_DETECTED,failure);
+            case "55P03" -> new OrderDatabaseConcurrencyException(
+                    operation,id,OrderDatabaseConcurrencyException.Kind.LOCK_NOT_AVAILABLE,failure);
+            default -> new OrderPersistenceException(
+                    operation+" failed before COMMIT",failure);
+        };
     }
 
     private static void rollback(Connection db, Exception failure) {
@@ -272,7 +290,7 @@ public final class PostgresOrderRepository implements OrderRepository {
                 throw e;
             }
         } catch (SQLException e) {
-            throw new OrderPersistenceException("read Order failed",e);
+            throw beforeCommitFailure("read Order",id,e);
         }
     }
 
