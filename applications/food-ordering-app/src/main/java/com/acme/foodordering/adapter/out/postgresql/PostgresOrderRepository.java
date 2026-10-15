@@ -180,18 +180,13 @@ public final class PostgresOrderRepository implements OrderRepository {
                     String restaurant=rows.getString("restaurant_id");
                     String status=rows.getString("status");
                     Instant placedAt=rows.getObject("placed_at",OffsetDateTime.class).toInstant();
-                    // Assemble while connection is open; no domain command replay.
-                    // Invalid stored values, enums or domain-invariant failures
-                    // are corruption, NOT HTTP 400 or ORDER_NOT_FOUND.
-                    try {
-                        List<OrderLine> lines=loadLines(db,id);
-                        List<OrderWorkflowOccurrence> history=loadHistory(db,id);
-                        return Optional.of(Order.reconstitute(
-                                id,new CustomerId(customer),new RestaurantId(restaurant),
-                                lines,OrderStatus.valueOf(status),placedAt,history));
-                    } catch (IllegalArgumentException | OrderInvariantViolationException e) {
-                        throw new InvalidPersistedOrderException(id,e);
-                    }
+                    // JDBC conversion and domain validation are separate
+                    // responsibilities, owned by the persistence mapper.
+                    List<OrderLine> lines = loadLines(db,id);
+                    List<OrderWorkflowOccurrence> history = loadHistory(db,id);
+                    return Optional.of(PostgresOrderMapper.reconstitute(
+                            id, customer, restaurant, status, placedAt,
+                            lines, history));
                 }
             }
         } catch (SQLException e) {
@@ -199,31 +194,27 @@ public final class PostgresOrderRepository implements OrderRepository {
         }
     }
 
-    private static List<OrderLine> loadLines(Connection db,OrderId id) throws SQLException {
-        var values=new ArrayList<OrderLine>();
+
+    private static List<OrderLine> loadLines(Connection db, OrderId id) throws SQLException {
         try (var ps=db.prepareStatement(
-                "SELECT menu_item_id,item_name,quantity,unit_price FROM order_lines WHERE order_id=? ORDER BY line_position")) {
+                "SELECT line_position,menu_item_id,item_name,quantity,unit_price "
+                + "FROM order_lines WHERE order_id=? ORDER BY line_position")) {
             ps.setObject(1,id.value());
-            try(var rs=ps.executeQuery()){
-                while(rs.next()) values.add(new OrderLine(
-                        rs.getString(1),rs.getString(2),rs.getInt(3),rs.getBigDecimal(4)));
+            try(var rs=ps.executeQuery()) {
+                return PostgresOrderMapper.readLines(id,rs);
             }
         }
-        return values;
     }
 
-    private static List<OrderWorkflowOccurrence> loadHistory(Connection db,OrderId id) throws SQLException {
-        var values=new ArrayList<OrderWorkflowOccurrence>();
+    private static List<OrderWorkflowOccurrence> loadHistory(Connection db, OrderId id)
+            throws SQLException {
         try (var ps=db.prepareStatement(
-                "SELECT action,participant,occurred_at FROM order_workflow_occurrences WHERE order_id=? ORDER BY occurrence_position")) {
+                "SELECT occurrence_position,action,participant,occurred_at "
+                + "FROM order_workflow_occurrences WHERE order_id=? ORDER BY occurrence_position")) {
             ps.setObject(1,id.value());
-            try(var rs=ps.executeQuery()){
-                while(rs.next()) values.add(new OrderWorkflowOccurrence(
-                        OrderWorkflowAction.valueOf(rs.getString(1)),
-                        WorkflowParticipant.valueOf(rs.getString(2)),
-                        rs.getObject(3,OffsetDateTime.class).toInstant()));
+            try(var rs=ps.executeQuery()) {
+                return PostgresOrderMapper.readHistory(id,rs);
             }
         }
-        return values;
     }
 }
