@@ -83,6 +83,7 @@ public final class PostgresOrderRepository implements OrderRepository {
     @Override
     public void createNew(Order order) {
         Objects.requireNonNull(order, "order");
+        if (order.version() != 0L) throw new IllegalArgumentException("createNew expects version zero");
         try (var db = connection()) {
             db.setAutoCommit(false);
             boolean commitAttempted = false;
@@ -117,18 +118,27 @@ public final class PostgresOrderRepository implements OrderRepository {
             db.setAutoCommit(false);
             boolean commitAttempted = false;
             try {
-                // Intentional P10-compatible upsert: no stale state/version guard.
+                // Conditional root update is the linearization point for
+                // aggregate currentness. A stale successor cannot reach
+                // child DELETE or INSERT statements.
+                if (order.version() < 1L)
+                    throw new StaleOrderVersionException(order.id(), 0L);
                 try (var ps = db.prepareStatement("""
-                        INSERT INTO orders (id,customer_id,restaurant_id,status,placed_at)
-                        VALUES (?,?,?,?,?)
-                        ON CONFLICT (id) DO UPDATE SET
-                          customer_id=EXCLUDED.customer_id,
-                          restaurant_id=EXCLUDED.restaurant_id,
-                          status=EXCLUDED.status,
-                          placed_at=EXCLUDED.placed_at
+                        UPDATE orders SET
+                          customer_id=?,restaurant_id=?,status=?,placed_at=?,
+                          version=?
+                        WHERE id=? AND version=?
                         """)) {
-                    bindRoot(ps, order);
-                    ps.executeUpdate();
+                    ps.setString(1,order.customerId().value());
+                    ps.setString(2,order.restaurantId().value());
+                    ps.setString(3,order.status().name());
+                    ps.setObject(4,OffsetDateTime.ofInstant(order.placedAt(),ZoneOffset.UTC));
+                    ps.setLong(5,order.version());
+                    ps.setObject(6,order.id().value());
+                    ps.setLong(7,order.version()-1L);
+                    if (ps.executeUpdate() != 1)
+                        throw new StaleOrderVersionException(
+                                order.id(),order.version()-1L);
                 }
                 try (var ps = db.prepareStatement(
                         "DELETE FROM order_workflow_occurrences WHERE order_id=?")) {
@@ -171,8 +181,9 @@ public final class PostgresOrderRepository implements OrderRepository {
 
     private static void insertRoot(Connection db, Order o) throws SQLException {
         try (var ps=db.prepareStatement(
-                "INSERT INTO orders(id,customer_id,restaurant_id,status,placed_at) VALUES(?,?,?,?,?)")) {
+                "INSERT INTO orders(id,customer_id,restaurant_id,status,placed_at,version) VALUES(?,?,?,?,?,?)")) {
             bindRoot(ps,o);
+            ps.setLong(6,o.version());
             ps.executeUpdate();
         }
     }
@@ -231,7 +242,7 @@ public final class PostgresOrderRepository implements OrderRepository {
             try {
                 Optional<Order> result;
                 try (var ps=db.prepareStatement(
-                        "SELECT customer_id,restaurant_id,status,placed_at FROM orders WHERE id=?")) {
+                        "SELECT customer_id,restaurant_id,status,placed_at,version FROM orders WHERE id=?")) {
                     ps.setObject(1,id.value());
                     try (var rows=ps.executeQuery()) {
                         if(!rows.next()) {
@@ -241,6 +252,7 @@ public final class PostgresOrderRepository implements OrderRepository {
                             String restaurant=rows.getString("restaurant_id");
                             String status=rows.getString("status");
                             Instant placedAt=rows.getObject("placed_at",OffsetDateTime.class).toInstant();
+                            long version=rows.getLong("version");
 
                             // Deterministic test-only interleaving seam: the
                             // production observer is always NOOP.
@@ -249,7 +261,7 @@ public final class PostgresOrderRepository implements OrderRepository {
                             List<OrderLine> lines=loadLines(db,id);
                             List<OrderWorkflowOccurrence> history=loadHistory(db,id);
                             result=Optional.of(PostgresOrderMapper.reconstitute(
-                                    id,customer,restaurant,status,placedAt,lines,history));
+                                    id,customer,restaurant,status,placedAt,lines,history,version));
                         }
                     }
                 }

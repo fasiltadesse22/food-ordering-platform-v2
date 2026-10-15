@@ -27,11 +27,11 @@ final class PostgresOrderMapper {
     static Order reconstitute(
             OrderId id, String customer, String restaurant, String status,
             Instant placedAt, List<OrderLine> lines,
-            List<OrderWorkflowOccurrence> history) {
+            List<OrderWorkflowOccurrence> history, long version) {
         try {
             return Order.reconstitute(
                     id, new CustomerId(customer), new RestaurantId(restaurant),
-                    lines, OrderStatus.valueOf(status), placedAt, history);
+                    lines, OrderStatus.valueOf(status), placedAt, history, version);
         } catch (IllegalArgumentException | OrderInvariantViolationException ex) {
             throw new InvalidPersistedOrderException(id, ex);
         }

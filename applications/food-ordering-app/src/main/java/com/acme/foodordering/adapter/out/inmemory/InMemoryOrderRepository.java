@@ -2,6 +2,7 @@ package com.acme.foodordering.adapter.out.inmemory;
 
 import com.acme.foodordering.application.port.out.OrderRepository;
 import com.acme.foodordering.application.port.out.OrderAlreadyExistsException;
+import com.acme.foodordering.application.port.out.StaleOrderVersionException;
 import com.acme.foodordering.domain.order.Order;
 import com.acme.foodordering.domain.order.OrderId;
 
@@ -31,6 +32,7 @@ public final class InMemoryOrderRepository implements OrderRepository {
     @Override
     public void createNew(Order order) {
         java.util.Objects.requireNonNull(order, "order must not be null");
+        if (order.version()!=0L) throw new IllegalArgumentException("createNew expects version zero");
         if (currentOrders.putIfAbsent(order.id(), order) != null) {
             throw new OrderAlreadyExistsException(order.id());
         }
@@ -38,7 +40,12 @@ public final class InMemoryOrderRepository implements OrderRepository {
 
     @Override
     public void saveCurrent(Order order) {
-        currentOrders.put(order.id(), order);
+        currentOrders.compute(order.id(),(id,current)->{
+            long expected=order.version()-1;
+            if(current==null || order.version()<1 || current.version()!=expected)
+                throw new StaleOrderVersionException(id,Math.max(expected,0));
+            return order;
+        });
     }
 
     @Override

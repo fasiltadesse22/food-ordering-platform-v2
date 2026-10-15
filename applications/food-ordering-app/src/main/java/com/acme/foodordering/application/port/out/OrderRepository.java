@@ -27,11 +27,11 @@ public interface OrderRepository {
     void createNew(Order order);
 
     /**
-     * Legacy unconditional replacement used for existing Order evolutions.
-     * Deliberately NOT a stale-write-safe update: P13/P14/P17 negative-control
-     * behavior must remain visible until P16–P18 real DB conflict evolution.
-     * This method may currently insert absent identities. Do not use for
-     * new-Order creation; use createNew instead.
+     * Conditionally publish an existing successor. Domain evolution advances
+     * version by exactly one; this method succeeds only when the stored root
+     * still has successor.version()-1. Otherwise it throws
+     * StaleOrderVersionException without changing any aggregate state.
+     * This is NOT command-level idempotency or automatic retry handling.
      */
     void saveCurrent(Order order);
 
