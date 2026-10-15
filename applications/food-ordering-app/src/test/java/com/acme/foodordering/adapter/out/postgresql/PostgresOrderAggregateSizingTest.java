@@ -188,7 +188,8 @@ class PostgresOrderAggregateSizingTest {
                 }catch(StaleOrderVersionException e){return false;}
             });
             await(ready);go.countDown();
-            var a=edit.get(15,TimeUnit.SECONDS),b=milestone.get(15,TimeUnit.SECONDS);
+            boolean a=edit.get(15,TimeUnit.SECONDS);
+            boolean b=milestone.get(15,TimeUnit.SECONDS);
             assertThat(a!=b).isTrue();
             var committed=repo.findCurrentById(HOT_ID).orElseThrow();
             assertThat(committed.version()).isEqualTo(1);
