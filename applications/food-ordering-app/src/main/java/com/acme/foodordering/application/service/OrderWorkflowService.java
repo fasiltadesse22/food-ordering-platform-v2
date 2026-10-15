@@ -28,7 +28,7 @@ public final class OrderWorkflowService implements OrderWorkflowUseCase {
 
     @Override
     public OrderActionResult recordPayment(OrderId orderId) {
-        return update(orderId, current -> current.recordPayment(clock.instant()));
+        return update(orderId, current -> current.recordPayment(clock.instant()), ConflictPolicy.NO_RETRY);
     }
 
     @Override
@@ -41,7 +41,7 @@ public final class OrderWorkflowService implements OrderWorkflowUseCase {
                 current -> current.recordRestaurantAcceptance(
                         actingRestaurantId,
                         clock.instant()
-                )
+                ), ConflictPolicy.RE_EVALUATE_ONCE
         );
     }
 
@@ -55,7 +55,7 @@ public final class OrderWorkflowService implements OrderWorkflowUseCase {
                 current -> current.recordRestaurantRejection(
                         actingRestaurantId,
                         clock.instant()
-                )
+                ), ConflictPolicy.RE_EVALUATE_ONCE
         );
     }
 
@@ -69,13 +69,13 @@ public final class OrderWorkflowService implements OrderWorkflowUseCase {
                 current -> current.recordCancellation(
                         actingCustomerId,
                         clock.instant()
-                )
+                ), ConflictPolicy.RE_EVALUATE_ONCE
         );
     }
 
     @Override
     public OrderActionResult recordRefundRequest(OrderId orderId) {
-        return update(orderId, current -> current.recordRefundRequest(clock.instant()));
+        return update(orderId, current -> current.recordRefundRequest(clock.instant()), ConflictPolicy.NO_RETRY);
     }
 
     @Override
@@ -88,7 +88,7 @@ public final class OrderWorkflowService implements OrderWorkflowUseCase {
                 current -> current.recordPreparationStarted(
                         actingRestaurantId,
                         clock.instant()
-                )
+                ), ConflictPolicy.RE_EVALUATE_ONCE
         );
     }
 
@@ -102,45 +102,64 @@ public final class OrderWorkflowService implements OrderWorkflowUseCase {
                 current -> current.recordCompletion(
                         actingRestaurantId,
                         clock.instant()
-                )
+                ), ConflictPolicy.RE_EVALUATE_ONCE
         );
     }
 
+    /**
+     * P18: only selected pure-local lifecycle decisions may be re-evaluated
+     * once after a confirmed stale-version rejection. The retry begins with
+     * a NEW repository read and a NEW domain decision; it NEVER resubmits
+     * the stale immutable successor. Payment/refund local milestones are
+     * deliberately NO_RETRY: duplicate effects and operation identity are
+     * not yet solved. No retry on SQLState failures or unknown COMMIT outcome.
+     */
+    private enum ConflictPolicy { NO_RETRY, RE_EVALUATE_ONCE }
+
     private OrderActionResult update(
             OrderId orderId,
-            Function<Order, Order> evolution
+            Function<Order, Order> evolution,
+            ConflictPolicy policy
     ) {
         Objects.requireNonNull(orderId, "orderId must not be null");
         Objects.requireNonNull(evolution, "evolution must not be null");
+        Objects.requireNonNull(policy, "policy must not be null");
 
-        var current = repository.findCurrentById(orderId);
-        if (current.isEmpty()) {
-            return new OrderActionResult.Rejected(new OrderActionRejection(
-                    OrderActionRejection.Code.ORDER_NOT_FOUND,
-                    "order " + orderId + " was not found"
-            ));
+        int maxAttempts = policy == ConflictPolicy.RE_EVALUATE_ONCE ? 2 : 1;
+        for (int attempt = 0; attempt < maxAttempts; attempt++) {
+            // Do not reuse an earlier Order snapshot after a conflict.
+            var current = repository.findCurrentById(orderId);
+            if (current.isEmpty()) {
+                return new OrderActionResult.Rejected(new OrderActionRejection(
+                        OrderActionRejection.Code.ORDER_NOT_FOUND,
+                        "order " + orderId + " was not found"
+                ));
+            }
+            try {
+                var updated = evolution.apply(current.get());
+                repository.saveCurrent(updated);
+                return new OrderActionResult.Accepted(OrderSnapshot.from(updated));
+            } catch (StaleOrderVersionException conflict) {
+                if (attempt + 1 < maxAttempts) {
+                    continue;
+                }
+                return new OrderActionResult.Rejected(new OrderActionRejection(
+                        OrderActionRejection.Code.STALE_ORDER_VERSION,
+                        conflict.getMessage()
+                ));
+            } catch (IllegalOrderTransitionException exception) {
+                return new OrderActionResult.Rejected(new OrderActionRejection(
+                        OrderActionRejection.Code.ILLEGAL_TRANSITION,
+                        exception.getMessage()
+                ));
+            } catch (OrderGuardViolationException exception) {
+                return new OrderActionResult.Rejected(new OrderActionRejection(
+                        mapGuardCode(exception.code()),
+                        exception.getMessage()
+                ));
+            }
         }
-
-        try {
-            var updated = evolution.apply(current.get());
-            repository.saveCurrent(updated);
-            return new OrderActionResult.Accepted(OrderSnapshot.from(updated));
-        } catch (StaleOrderVersionException exception) {
-            return new OrderActionResult.Rejected(new OrderActionRejection(
-                    OrderActionRejection.Code.STALE_ORDER_VERSION,
-                    exception.getMessage()
-            ));
-        } catch (IllegalOrderTransitionException exception) {
-            return new OrderActionResult.Rejected(new OrderActionRejection(
-                    OrderActionRejection.Code.ILLEGAL_TRANSITION,
-                    exception.getMessage()
-            ));
-        } catch (OrderGuardViolationException exception) {
-            return new OrderActionResult.Rejected(new OrderActionRejection(
-                    mapGuardCode(exception.code()),
-                    exception.getMessage()
-            ));
-        }
+        throw new IllegalStateException("unreachable: bounded attempt loop");
     }
 
     private static OrderActionRejection.Code mapGuardCode(
