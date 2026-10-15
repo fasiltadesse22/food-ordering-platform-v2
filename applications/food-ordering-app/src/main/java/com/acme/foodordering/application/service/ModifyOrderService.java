@@ -5,6 +5,7 @@ import com.acme.foodordering.application.port.in.ModifyOrderUseCase;
 import com.acme.foodordering.application.port.in.OrderActionRejection;
 import com.acme.foodordering.application.port.in.OrderActionResult;
 import com.acme.foodordering.application.port.out.OrderRepository;
+import com.acme.foodordering.application.port.out.StaleOrderVersionException;
 import com.acme.foodordering.domain.order.OrderGuardViolationException;
 import com.acme.foodordering.domain.order.OrderLine;
 
@@ -49,6 +50,11 @@ public final class ModifyOrderService implements ModifyOrderUseCase {
 
             repository.saveCurrent(updated);
             return new OrderActionResult.Accepted(OrderSnapshot.from(updated));
+        } catch (StaleOrderVersionException exception) {
+            return new OrderActionResult.Rejected(new OrderActionRejection(
+                    OrderActionRejection.Code.STALE_ORDER_VERSION,
+                    exception.getMessage()
+            ));
         } catch (OrderGuardViolationException exception) {
             var code = switch (exception.code()) {
                 case CUSTOMER_DOES_NOT_OWN_ORDER ->

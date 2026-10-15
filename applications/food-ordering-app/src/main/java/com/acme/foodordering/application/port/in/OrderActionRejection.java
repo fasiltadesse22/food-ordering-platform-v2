@@ -13,6 +13,7 @@ public record OrderActionRejection(
 
     public enum Code {
         ORDER_NOT_FOUND,
+        STALE_ORDER_VERSION,
         ILLEGAL_TRANSITION,
         CUSTOMER_DOES_NOT_OWN_ORDER,
         RESTAURANT_DOES_NOT_OWN_ORDER,

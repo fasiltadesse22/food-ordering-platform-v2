@@ -118,7 +118,8 @@ public class OrderController {
             case ORDER_NOT_FOUND -> HttpStatus.NOT_FOUND;
             case CUSTOMER_DOES_NOT_OWN_ORDER,
                  RESTAURANT_DOES_NOT_OWN_ORDER -> HttpStatus.FORBIDDEN;
-            case ILLEGAL_TRANSITION,
+            case STALE_ORDER_VERSION,
+                 ILLEGAL_TRANSITION,
                  REFUND_REQUIRES_RECORDED_PAYMENT,
                  REFUND_REQUIRES_REJECTED_OR_CANCELLED_ORDER,
                  REFUND_ALREADY_REQUESTED,

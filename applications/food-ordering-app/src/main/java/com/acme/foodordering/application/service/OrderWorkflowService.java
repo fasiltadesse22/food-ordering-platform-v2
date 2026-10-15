@@ -4,6 +4,7 @@ import com.acme.foodordering.application.port.in.OrderActionRejection;
 import com.acme.foodordering.application.port.in.OrderActionResult;
 import com.acme.foodordering.application.port.in.OrderWorkflowUseCase;
 import com.acme.foodordering.application.port.out.OrderRepository;
+import com.acme.foodordering.application.port.out.StaleOrderVersionException;
 import com.acme.foodordering.domain.order.CustomerId;
 import com.acme.foodordering.domain.order.IllegalOrderTransitionException;
 import com.acme.foodordering.domain.order.Order;
@@ -124,6 +125,11 @@ public final class OrderWorkflowService implements OrderWorkflowUseCase {
             var updated = evolution.apply(current.get());
             repository.saveCurrent(updated);
             return new OrderActionResult.Accepted(OrderSnapshot.from(updated));
+        } catch (StaleOrderVersionException exception) {
+            return new OrderActionResult.Rejected(new OrderActionRejection(
+                    OrderActionRejection.Code.STALE_ORDER_VERSION,
+                    exception.getMessage()
+            ));
         } catch (IllegalOrderTransitionException exception) {
             return new OrderActionResult.Rejected(new OrderActionRejection(
                     OrderActionRejection.Code.ILLEGAL_TRANSITION,
