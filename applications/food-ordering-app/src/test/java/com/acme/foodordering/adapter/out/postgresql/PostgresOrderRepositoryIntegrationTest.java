@@ -137,23 +137,27 @@ class PostgresOrderRepositoryIntegrationTest {
         // Invalid status/history and missing-lines corruption remain separate tests.
     }
 
-    @Test void staleSuccessorStillOverwritesNewerStateAsP17NegativeControl(){
+    @Test void staleCancellationNowFailsVersionCheckWithoutErasingCommittedAcceptance(){
         var original=initial();
         repo.createNew(original);
         var accepted=original.recordRestaurantAcceptance(RESTAURANT,AT.plusSeconds(1));
         var staleCancel=original.recordCancellation(CUSTOMER,AT.plusSeconds(2));
         repo.saveCurrent(accepted);
-        repo.saveCurrent(staleCancel);
+        assertThatThrownBy(()->repo.saveCurrent(staleCancel))
+                .isInstanceOf(StaleOrderVersionException.class);
         var recovered=repo.findCurrentById(ID).orElseThrow();
-        assertThat(recovered.status()).isEqualTo(OrderStatus.CANCELLED);
+        assertThat(recovered.version()).isEqualTo(1);
+        assertThat(recovered.status()).isEqualTo(OrderStatus.ACCEPTED);
         assertThat(recovered.workflowOccurrences())
                 .extracting(OrderWorkflowOccurrence::action)
-                .containsExactly(OrderWorkflowAction.ORDER_CANCELLED);
+                .containsExactly(OrderWorkflowAction.RESTAURANT_ACCEPTED);
     }
 
-    @Test void legacySaveCanStillInsertAnAbsentIdentityUntilVersionedUpdatePart(){
-        repo.saveCurrent(initial());
-        assertThat(repo.findCurrentById(ID)).isPresent();
+    @Test void versionedSaveCannotInventAbsentIdentity(){
+        var successor=initial().recordPayment(AT.plusSeconds(1));
+        assertThatThrownBy(()->repo.saveCurrent(successor))
+                .isInstanceOf(StaleOrderVersionException.class);
+        assertThat(repo.findCurrentById(ID)).isEmpty();
     }
 
     @Test void storedOrderWithMissingLinesIsRejectedDuringReconstitution() throws Exception {

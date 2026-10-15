@@ -234,7 +234,7 @@ class PostgresOrderIsolationTest {
         }
     }
 
-    @Test void concurrentDomainDecisionsFromSameSnapshotStillBothCommit()
+    @Test void concurrentDomainDecisionsFromSameSnapshotNowYieldOneConflict()
             throws Exception {
         repo.createNew(placed());
         var bothRead=new CountDownLatch(2);
@@ -243,25 +243,34 @@ class PostgresOrderIsolationTest {
             var accepting=pool.submit(()->{
                 var source=repo.findCurrentById(ID).orElseThrow();
                 bothRead.countDown();waitFor(go,"release acceptance");
-                repo.saveCurrent(source.recordRestaurantAcceptance(RESTAURANT,AT.plusSeconds(1)));
-                return true;
+                try {
+                    repo.saveCurrent(source.recordRestaurantAcceptance(RESTAURANT,AT.plusSeconds(1)));
+                    return true;
+                } catch(com.acme.foodordering.application.port.out.StaleOrderVersionException conflict) {
+                    return false;
+                }
             });
             var rejecting=pool.submit(()->{
                 var source=repo.findCurrentById(ID).orElseThrow();
                 bothRead.countDown();waitFor(go,"release rejection");
-                repo.saveCurrent(source.recordRestaurantRejection(RESTAURANT,AT.plusSeconds(2)));
-                return true;
+                try {
+                    repo.saveCurrent(source.recordRestaurantRejection(RESTAURANT,AT.plusSeconds(2)));
+                    return true;
+                } catch(com.acme.foodordering.application.port.out.StaleOrderVersionException conflict) {
+                    return false;
+                }
             });
             waitFor(bothRead,"both reads");
             go.countDown();
-            assertThat(accepting.get(12,TimeUnit.SECONDS)).isTrue();
-            assertThat(rejecting.get(12,TimeUnit.SECONDS)).isTrue();
+            boolean a=accepting.get(12,TimeUnit.SECONDS);
+            boolean b=rejecting.get(12,TimeUnit.SECONDS);
+            assertThat(a != b).isTrue();
         } finally {go.countDown();}
         var finalOrder=repo.findCurrentById(ID).orElseThrow();
         assertThat(finalOrder.status()).isIn(OrderStatus.ACCEPTED,OrderStatus.REJECTED);
         assertThat(finalOrder.workflowOccurrences()).hasSize(1);
-        // PostgreSQL serialized physical writes, but BOTH stale decisions
-        // were acknowledged: there is no expectedVersion/CAS guard yet.
+        // P16 checkpoint preserves both-accepted negative control.
+        // P17 CAS guarantees exactly one currentness winner.
         assertThat(finalOrder.workflowOccurrences().get(0).action()).isIn(
             OrderWorkflowAction.RESTAURANT_ACCEPTED,
             OrderWorkflowAction.RESTAURANT_REJECTED);

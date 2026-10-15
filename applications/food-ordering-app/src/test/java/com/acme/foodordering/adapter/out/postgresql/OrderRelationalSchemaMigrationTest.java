@@ -29,7 +29,7 @@ class OrderRelationalSchemaMigrationTest {
         .locations("classpath:db/migration").load();
     var result=flyway.migrate();
     assertThat(result.success).isTrue();
-    assertThat(result.migrationsExecuted).isEqualTo(2);
+    assertThat(result.migrationsExecuted).isEqualTo(3);
   }
   @AfterAll static void close() {if(pg!=null)pg.stop();}
   @BeforeEach void truncate() throws SQLException {
@@ -76,11 +76,11 @@ class OrderRelationalSchemaMigrationTest {
   }
   @FunctionalInterface interface ThrowingSqlAction {void run() throws SQLException;}
 
-  @Test void flywayV1AndV2RunOnceAndRepeatMigrationIsNoop() {
+  @Test void flywayV1V2V3RunOnceAndRepeatMigrationIsNoop() {
     var result=flyway.migrate();
     assertThat(result.success).isTrue();
     assertThat(result.migrationsExecuted).isZero();
-    assertThat(flyway.info().applied()).hasSize(2);
+    assertThat(flyway.info().applied()).hasSize(3);
   }
   @Test void allThreeRealPostgresTablesExist() throws SQLException {
     try(var db=open();var ps=db.prepareStatement("SELECT table_name FROM information_schema.tables "

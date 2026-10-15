@@ -102,28 +102,28 @@ class OrderRepositoryAuthorityContractTest {
     }
 
     @Test
-    void legacySaveCurrentStillAllowsStaleSuccessorToOverwriteNewerState() {
+    void staleInMemorySuccessorIsRejectedNotOverwritten() {
         var repo = new InMemoryOrderRepository();
         var initial = placed(new CustomerId("customer-1"));
         repo.createNew(initial);
         var accepted = initial.recordRestaurantAcceptance(RESTAURANT,NOW.plusSeconds(1));
         var cancelledFromStale = initial.recordCancellation(initial.customerId(),NOW.plusSeconds(2));
         repo.saveCurrent(accepted);
-        repo.saveCurrent(cancelledFromStale);
+        assertThatThrownBy(()->repo.saveCurrent(cancelledFromStale))
+                .isInstanceOf(com.acme.foodordering.application.port.out.StaleOrderVersionException.class);
         assertThat(repo.findCurrentById(ID).orElseThrow().status())
-                .isEqualTo(OrderStatus.CANCELLED);
-        assertThat(repo.findCurrentById(ID).orElseThrow().workflowOccurrences())
-                .extracting(o->o.action().name())
-                .containsExactly("ORDER_CANCELLED");
-        // Negative control: P17 temporal failure intentionally preserved.
+                .isEqualTo(OrderStatus.ACCEPTED);
+        assertThat(repo.findCurrentById(ID).orElseThrow().version()).isEqualTo(1L);
+        // P16 snapshot retains historical stale-overwrite failure evidence.
     }
 
     @Test
-    void legacySaveCurrentCanStillInsertMissingIdentityAsDocumentedGap() {
+    void conditionalSaveCannotInsertMissingIdentity() {
         var repo = new InMemoryOrderRepository();
-        repo.saveCurrent(placed(new CustomerId("customer-1")));
-        assertThat(repo.findCurrentById(ID)).isPresent();
-        // Negative control: update-only semantics/expected version remain deferred.
+        var successor = placed(new CustomerId("customer-1")).recordPayment(NOW.plusSeconds(1));
+        assertThatThrownBy(()->repo.saveCurrent(successor))
+                .isInstanceOf(com.acme.foodordering.application.port.out.StaleOrderVersionException.class);
+        assertThat(repo.findCurrentById(ID)).isEmpty();
     }
 
     @Test

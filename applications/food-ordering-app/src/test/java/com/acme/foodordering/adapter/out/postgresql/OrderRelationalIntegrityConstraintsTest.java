@@ -34,7 +34,7 @@ class OrderRelationalIntegrityConstraintsTest {
         pg.start();
         var r = flyway(pg).migrate();
         assertThat(r.success).isTrue();
-        assertThat(r.migrationsExecuted).isEqualTo(2);
+        assertThat(r.migrationsExecuted).isEqualTo(3);
     }
 
     @AfterAll static void stop() {
@@ -196,7 +196,7 @@ class OrderRelationalIntegrityConstraintsTest {
             var repaired=flyway(older).migrate();
             assertThat(repaired.success).isTrue();
             assertThat(repaired.migrationsExecuted).isEqualTo(1);
-            assertThat(flyway(older).info().applied()).hasSize(2);
+            assertThat(flyway(older).info().applied()).hasSize(3);
             assertThatThrownBy(() -> execute(older,
                 "UPDATE order_lines SET quantity=0 WHERE order_id='" + ID + "'"))
                 .isInstanceOf(SQLException.class)
