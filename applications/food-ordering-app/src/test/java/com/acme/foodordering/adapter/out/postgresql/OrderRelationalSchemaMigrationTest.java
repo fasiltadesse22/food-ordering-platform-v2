@@ -29,7 +29,7 @@ class OrderRelationalSchemaMigrationTest {
         .locations("classpath:db/migration").load();
     var result=flyway.migrate();
     assertThat(result.success).isTrue();
-    assertThat(result.migrationsExecuted).isEqualTo(1);
+    assertThat(result.migrationsExecuted).isEqualTo(2);
   }
   @AfterAll static void close() {if(pg!=null)pg.stop();}
   @BeforeEach void truncate() throws SQLException {
@@ -76,11 +76,11 @@ class OrderRelationalSchemaMigrationTest {
   }
   @FunctionalInterface interface ThrowingSqlAction {void run() throws SQLException;}
 
-  @Test void flywayV1RunsOnceAndRepeatMigrationIsNoop() {
+  @Test void flywayV1AndV2RunOnceAndRepeatMigrationIsNoop() {
     var result=flyway.migrate();
     assertThat(result.success).isTrue();
     assertThat(result.migrationsExecuted).isZero();
-    assertThat(flyway.info().applied()).hasSize(1);
+    assertThat(flyway.info().applied()).hasSize(2);
   }
   @Test void allThreeRealPostgresTablesExist() throws SQLException {
     try(var db=open();var ps=db.prepareStatement("SELECT table_name FROM information_schema.tables "
@@ -165,20 +165,20 @@ class OrderRelationalSchemaMigrationTest {
       }
     }
   }
-  @Test void baselineSchemaStillAcceptsInvalidDomainValuesAsNegativeControl() throws SQLException {
+  @Test void v2DatabaseNowRejectsP11ZeroQuantityAndNegativePrice() throws SQLException {
     try(var db=open()) {
       root(db,A);
-      line(db,A,0,0,new BigDecimal("-2.00"));
-      try(var ps=db.prepareStatement("SELECT quantity,unit_price "
-          +"FROM order_lines WHERE order_id=?")) {
+      sqlState(()->line(db,A,0,0,new BigDecimal("-2.00")),"23514");
+      sqlState(()->line(db,A,0,0,new BigDecimal("2.00")),"23514");
+      sqlState(()->line(db,A,0,1,new BigDecimal("-2.00")),"23514");
+      try(var ps=db.prepareStatement("SELECT COUNT(*) FROM order_lines WHERE order_id=?")) {
         ps.setObject(1,A);
         try(var rs=ps.executeQuery()) {
           assertThat(rs.next()).isTrue();
           assertThat(rs.getInt(1)).isZero();
-          assertThat(rs.getBigDecimal(2)).isEqualByComparingTo("-2.00");
         }
       }
     }
-    // Deliberate P13 before-state: DB not yet full invariant enforcement.
+    // Before-state preserved in P11 checkpoint; V2 now prevents invalid writes.
   }
 }

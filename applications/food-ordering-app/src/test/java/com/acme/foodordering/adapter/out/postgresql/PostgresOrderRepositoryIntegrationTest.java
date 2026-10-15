@@ -120,16 +120,21 @@ class PostgresOrderRepositoryIntegrationTest {
                 .isInstanceOf(InvalidPersistedOrderException.class);
     }
 
-    @Test void invalidOrderLineIsReportedAsCorruptionNotAnHttpInputError() throws Exception {
+    @Test void databaseNowRejectsInvalidLineQuantityWithoutCorruptingExistingAggregate() throws Exception {
         repo.createNew(initial());
         try(var db=DriverManager.getConnection(
                 pg.getJdbcUrl(),pg.getUsername(),pg.getPassword());
             var ps=db.prepareStatement(
                 "UPDATE order_lines SET quantity=0 WHERE order_id=? AND line_position=0")) {
-            ps.setObject(1,ID.value());ps.executeUpdate();
+            ps.setObject(1,ID.value());
+            assertThatThrownBy(ps::executeUpdate)
+                    .isInstanceOf(java.sql.SQLException.class)
+                    .satisfies(e->assertThat(((java.sql.SQLException)e).getSQLState()).isEqualTo("23514"));
         }
-        assertThatThrownBy(()->repo.findCurrentById(ID))
-                .isInstanceOf(InvalidPersistedOrderException.class);
+        var stillValid=repo.findCurrentById(ID).orElseThrow();
+        assertThat(stillValid.lines().get(0).quantity()).isEqualTo(2);
+        assertThat(stillValid.total()).isEqualByComparingTo("14.75");
+        // Invalid status/history and missing-lines corruption remain separate tests.
     }
 
     @Test void staleSuccessorStillOverwritesNewerStateAsP17NegativeControl(){
