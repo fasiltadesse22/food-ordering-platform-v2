@@ -19,8 +19,10 @@ import java.util.Optional;
  * P15: stores one immutable Order across the V1/V2 relational schema and
  * groups root/owned child writes in a single local JDBC transaction.
  * Distinguishes a pre-commit SQL error from a failed COMMIT acknowledgement.
- * Read-side P16 uses a read-only REPEATABLE READ snapshot for full aggregate\n * reconstruction. Writes remain unversioned LAST-WRITER-WINS
- * without a version/CAS condition (P16/P17 negative controls).
+ * Read-side P16 uses a read-only REPEATABLE READ snapshot.
+ * P17 writes use aggregate version-checked conditional UPDATE.
+ * P18 classifies recognized precommit SQL concurrency failures distinctly
+ * from the uncertain COMMIT outcome established in P15.
  *
  * Connections are opened per operation: no pool or scaling claim at P12.
  */
@@ -173,7 +175,11 @@ public final class PostgresOrderRepository implements OrderRepository {
      */
     private static OrderPersistenceException beforeCommitFailure(
             String operation, OrderId id, SQLException failure) {
-        return switch (failure.getSQLState()) {
+        String sqlState = failure.getSQLState();
+        if (sqlState == null) {
+            return new OrderPersistenceException(operation+" failed before COMMIT",failure);
+        }
+        return switch (sqlState) {
             case "40001" -> new OrderDatabaseConcurrencyException(
                     operation,id,OrderDatabaseConcurrencyException.Kind.SERIALIZATION_FAILURE,failure);
             case "40P01" -> new OrderDatabaseConcurrencyException(

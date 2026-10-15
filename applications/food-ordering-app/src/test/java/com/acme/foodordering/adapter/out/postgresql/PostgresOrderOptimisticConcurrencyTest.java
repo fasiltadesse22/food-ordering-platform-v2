@@ -223,7 +223,7 @@ class PostgresOrderOptimisticConcurrencyTest {
         assertThat(dbVersion()).isZero();
     }
 
-    @Test void applicationServiceConvertsStaleRevisionToConflictRejection()
+    @Test void applicationServiceReevaluatesStaleLifecycleDecisionAndRejectsNowIllegalTransition()
             throws Exception {
         repo.createNew(placed());
         var reads=new CountDownLatch(2);
@@ -249,13 +249,15 @@ class PostgresOrderOptimisticConcurrencyTest {
             var b=reject.get(12,TimeUnit.SECONDS);
             long successful=List.of(a,b).stream()
                 .filter(x->x instanceof OrderActionResult.Accepted).count();
-            long stale=List.of(a,b).stream()
+            long nowIllegal=List.of(a,b).stream()
                 .filter(x->x instanceof OrderActionResult.Rejected rejected
                     && rejected.rejection().code()
-                        ==com.acme.foodordering.application.port.in.OrderActionRejection.Code.STALE_ORDER_VERSION)
+                        ==com.acme.foodordering.application.port.in.OrderActionRejection.Code.ILLEGAL_TRANSITION)
                 .count();
             assertThat(successful).isEqualTo(1);
-            assertThat(stale).isEqualTo(1);
+            assertThat(nowIllegal).isEqualTo(1);
+            // P17's frozen checkpoint proves the raw stale-version rejection.
+            // P18 now deliberately rereads and returns the NEW domain outcome.
         } finally{go.countDown();}
     }
 
