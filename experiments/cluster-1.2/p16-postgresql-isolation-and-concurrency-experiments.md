@@ -1,0 +1,17 @@
+# C1.2-P16 — Actual PostgreSQL Isolation and Concurrent Order Experiments
+
+Method: Question -> Hypothesis -> Prediction -> Setup -> Controlled variable -> Execution -> Observation -> Evidence -> Interpretation -> Limitations -> Conclusion. Actual PostgreSQL 16 via Testcontainers with Flyway V1/V2 and P15 JDBC adapter. Test source: PostgresOrderIsolationTest.java (nine tests). Deterministic CountDownLatch barrier for precise reader/writer interleaving; real DB locks and sessions, no mocked PostgreSQL snapshots.
+
+E1 READ COMMITTED torn read. Question: can one transaction assemble an Order from different commits? Predict root PLACED, writer commits ACCEPTED+history, reader history includes RESTAURANT_ACCEPTED; such mixed domain reconstruction fails selected OrderInvariants. Actual assertions pass. Shows invalid reconstructed shape despite valid committed states.
+E2 READ COMMITTED nonrepeatable same-root SELECT within one transaction. Before other writer commits PLACED, after writer commits ACCEPTED. Real PostgreSQL observed both, pass.
+E3 REPEATABLE READ stable snapshot across writer commit. Reader first root SELECT PLACED, writer commits ACCEPTED+history, reader still observes PLACED and no occurrences; fresh read afterward accepted. Pass.
+E4 Actual production repository read-only snapshot. Test injects package-private NOOP-in-production hook after root, pauses one read; concurrent writer saveCurrent(accepted) commits before reader resumes; reader returns valid old PLACED empty history and unchanged lines, fresh reader accepted+history. Pass. This proves repository mechanism rather than only raw SQL.
+E5 Missing ID. Production read-only snapshot closes cleanly and returns Optional.empty. Pass.
+E6 Writer row-lock contention: first transaction UPDATE keeps root lock; second connection sets lock_timeout 250ms, competing UPDATE fails SQLState 55P03. Rollback first; Order remains PLACED. Pass. Timeout isn't benchmark or universal duration guarantee.
+E7 SELECT FOR UPDATE NOWAIT: first connection holds root row lock; another ordinary SELECT succeeds (MVCC), but FOR UPDATE NOWAIT fails 55P03. Pass. Lock isn't chosen for general Order lookup.
+E8 Concurrent domain decisions: two Java threads each read same PLACED state, synchronize on CountDownLatch, construct ACCEPT and REJECT successors, both invoke saveCurrent and return success; final Order is exactly one of these with corresponding single workflow occurrence. Pass. This is preserved P17 stale-write negative evidence even though physical PostgreSQL writes serialize.
+E9 PostgreSQL repeatable-read concurrent UPDATE: stale transaction reads PLACED, another commits acceptance, stale tx UPDATE same row fails SQLState 40001 and rolls back; accepted remains. Pass. Current app read and save happen in separate transactions, so this PG behavior is NOT proof of current business write protection.
+
+Candidate exact SHA 1e12bfb1b94245d26fb2cd347b7a852104044c57 and CI: https://github.com/fasiltadesse22/food-ordering-platform-v2/actions/runs/38752561425. Logs: P16 class 9 passed, Maven 194 passed (0 failures/errors/skipped), P18 in-memory JVM loss 404 and P12 PostgreSQL JVM recovery 200 passed. Later docs-bearing and frozen-checkpoint exact SHAs require separate CI.
+
+Predictions confirmed for controlled PostgreSQL schedules only. No bound on total lock wait beyond configured 250ms statement in test; no measured p95/p99, throughput, transaction snapshot retention costs, serializable history guarantee, distributed payment truth, or retry safety.

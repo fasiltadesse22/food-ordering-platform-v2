@@ -1,13 +1,11 @@
-# Checkpoint Manifest — C1.2-P15 Final Candidate
+# Checkpoint Manifest — C1.2-P16 Final Candidate
 
-Part: 1.2.15 Local Transactions, Commit, Rollback and Atomic Persistence.
-Authority: Master Roadmap V8.0 and derived Cluster 1.2 blueprint; one continuous Food Ordering Platform repository. Inherited verified checkpoints/C1.2-P14 SHA 9143f1f627423ad8da4cef1a41c8ae20d0045775. Implementation candidate 4ac8353f0a36dcfe7039d0a24da6da499c4e14e7 CI 38697855420 SUCCESS.
+Part 1.2.16 Database Isolation and Concurrent Aggregate Modification.
+Source contract V8.0 roadmap and derived Cluster1.2 blueprint, 20 analytical obligations and verified project continuity.
+Inherited C1.2-P15 SHA aae54a4346f190cc02ff809b241c6fc64c11d3b8.
+Implementation/test SHA 1e12bfb1b94245d26fb2cd347b7a852104044c57, GitHub CI run 38752561425 SUCCESS; 194 root Maven tests, nine new P16, 0 failures/errors/skipped, P18 original negative and P12 Postgres durability positive.
+Docs-bearing final commit is only candidate until its own CI and frozen-branch exact SHA CI both pass.
 
-Source evolution: PostgresOrderRepository explicit local transaction retained; tracks COMMIT attempt and preserves not-known-rollback semantics; package-private ConnectionSource for test-specific lost ACK after genuine commit; OrderPersistenceException extensible; new OrderCommitOutcomeUnknownException with OrderId; no schema/domain model change, no Spring service split.
-New PostgreSQL 16 Testcontainers class PostgresOrderTransactionBoundaryTest: 10 controlled experiments with actual DB triggers, deferred trigger, actual uncommitted server session termination, separate connection read, and simulated postcommit ack loss. Production SQL migrations untouched; temporary failure triggers only in isolated test DB.
-Expected and observed: after failed partial DML full old aggregate persists; after failed creation none persists; deferred commit error aborts DB transaction; after successful COMMIT complete aggregate persists; ack loss client error can coexist with committed aggregate.
-Candidate root Maven 185 tests pass (0 failures/errors/skipped), original memory P18 404, PostgreSQL P12 fresh JVM 200 CANCELLED recovery pass.
-
-Deferred known risks: READ COMMITTED separate read-query tearing P16; P17 stale accepted/cancel business conflict overwrites; P18 retry/reconciliation/command idempotency; postcommit network ambiguity not globally resolved; provider Payment authority not under this local DB transaction; no distributed transactions. No throughput/locking/HA benchmark.
-Exact docs-bearing final commit and frozen branch require independent CI verification before marking frozen.
-Next Part 1.2.16 Database Isolation and Concurrent Aggregate Modification; inherit frozen P15 SHA not main.
+Production evolution: PostgresOrderRepository.findCurrentById now bounded read-only REPEATABLE READ transaction across three SELECTs, commit/rollback; package-private RootReadObserver NOOP production deterministic P16 interleaving seam. No schema changes, no optimistic version CAS, no extra service, no external payment or new Customer/Restaurant authority.
+Verification: direct SQL READ COMMITTED torn snapshot and nonrepeatable read, repeatable-read coherent, real repo paused between SELECTs while writer commits, ordinary MVCC read vs FOR UPDATE NOWAIT, lock timeout, two conflicting concurrent immutable successors both accepted under unversioned saveCurrent, repeatable-read raw UPDATE SQLState 40001, no-row behavior.
+Intentional fragile next-state: concurrent acceptance and rejection both acknowledged; one last-writer-wins, no conflict-specific error; read snapshot coherent but potentially stale immediately after loading. P17 must implement optimistic version/currentness enforcement with source version and DB conditional update; P18 retry reconciliation/idempotency. Do not modify main; next part inherits exact verified P16 frozen SHA.
