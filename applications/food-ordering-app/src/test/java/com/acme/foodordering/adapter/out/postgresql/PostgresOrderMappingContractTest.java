@@ -101,6 +101,7 @@ class PostgresOrderMappingContractTest {
         var placed=initial();
         repository.createNew(placed);
         var paid=placed.recordPayment(AT.plusSeconds(1));
+        repository.saveCurrent(paid);
         var cancelled=paid.recordCancellation(CUSTOMER,AT.plusSeconds(2));
         repository.saveCurrent(cancelled);
         var loaded=repository.findCurrentById(ID).orElseThrow();
@@ -145,7 +146,9 @@ class PostgresOrderMappingContractTest {
         var placed=initial();
         repository.createNew(placed);
         var step=placed.recordPayment(AT.plusSeconds(1));
+        repository.saveCurrent(step);
         step=step.recordCancellation(CUSTOMER,AT.plusSeconds(2));
+        repository.saveCurrent(step);
         step=step.recordRefundRequest(AT.plusSeconds(3));
         repository.saveCurrent(step);
         // 3 lines * 3 workflow occurrences = 9 rows for a two-way JOIN.

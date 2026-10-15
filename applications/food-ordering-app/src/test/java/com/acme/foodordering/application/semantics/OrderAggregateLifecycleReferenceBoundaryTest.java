@@ -46,8 +46,8 @@ class OrderAggregateLifecycleReferenceBoundaryTest {
         var repository = new InMemoryOrderRepository();
         var first = newOrder("123e4567-e89b-12d3-a456-426614174181");
         var second = newOrder("123e4567-e89b-12d3-a456-426614174182");
-        repository.saveCurrent(first);
-        repository.saveCurrent(second);
+        repository.createNew(first);
+        repository.createNew(second);
 
         var accepted = first.recordRestaurantAcceptance(RESTAURANT, AT.plusSeconds(1));
         repository.saveCurrent(accepted);
@@ -85,7 +85,7 @@ class OrderAggregateLifecycleReferenceBoundaryTest {
     void applicationServiceLoadsInvokesOrderRootSavesAndProjectsResult() {
         var repository = new InMemoryOrderRepository();
         var placed = newOrder("123e4567-e89b-12d3-a456-426614174181");
-        repository.saveCurrent(placed);
+        repository.createNew(placed);
         var service = new OrderWorkflowService(repository, CLOCK);
 
         var result = service.recordRestaurantAcceptance(placed.id(), RESTAURANT);
@@ -109,7 +109,7 @@ class OrderAggregateLifecycleReferenceBoundaryTest {
     void wrongAssignedRestaurantReferenceCausesDomainRejectionWithoutChangingAuthority() {
         var repository = new InMemoryOrderRepository();
         var placed = newOrder("123e4567-e89b-12d3-a456-426614174181");
-        repository.saveCurrent(placed);
+        repository.createNew(placed);
         var service = new OrderWorkflowService(repository, CLOCK);
 
         var result = service.recordRestaurantAcceptance(
@@ -164,7 +164,7 @@ class OrderAggregateLifecycleReferenceBoundaryTest {
     void localPaymentRecordingHasOnlyTheExistingOrderFactSemantics() {
         var repository = new InMemoryOrderRepository();
         var placed = newOrder("123e4567-e89b-12d3-a456-426614174181");
-        repository.saveCurrent(placed);
+        repository.createNew(placed);
         var service = new OrderWorkflowService(repository, CLOCK);
 
         var result = service.recordPayment(placed.id());

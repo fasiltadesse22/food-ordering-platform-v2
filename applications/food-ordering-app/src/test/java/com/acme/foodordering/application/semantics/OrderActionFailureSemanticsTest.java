@@ -35,7 +35,7 @@ class OrderActionFailureSemanticsTest {
     void illegalLifecycleRequestIsARejectedBusinessOutcomeNotApplicationFailure() {
         var repository = new InMemoryOrderRepository();
         var order = placedOrder();
-        repository.saveCurrent(order);
+        repository.createNew(order);
         var service = new OrderWorkflowService(repository, CLOCK);
 
         var result = service.recordPreparationStarted(order.id(), RESTAURANT);
@@ -50,7 +50,7 @@ class OrderActionFailureSemanticsTest {
     void ownershipViolationIsARejectedBusinessOutcomeNotApplicationFailure() {
         var repository = new InMemoryOrderRepository();
         var order = placedOrder();
-        repository.saveCurrent(order);
+        repository.createNew(order);
         var service = new OrderWorkflowService(repository, CLOCK);
 
         var result = service.recordCancellation(
