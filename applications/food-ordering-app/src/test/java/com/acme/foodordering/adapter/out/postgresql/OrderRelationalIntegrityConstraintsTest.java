@@ -195,7 +195,8 @@ class OrderRelationalIntegrityConstraintsTest {
             execute(older,"UPDATE order_lines SET quantity=1,unit_price=0 WHERE order_id='" + ID + "'");
             var repaired=flyway(older).migrate();
             assertThat(repaired.success).isTrue();
-            assertThat(repaired.migrationsExecuted).isEqualTo(1);
+            // V2 now succeeds after remediation and V3 adds revision baseline.
+            assertThat(repaired.migrationsExecuted).isEqualTo(2);
             assertThat(flyway(older).info().applied()).hasSize(3);
             assertThatThrownBy(() -> execute(older,
                 "UPDATE order_lines SET quantity=0 WHERE order_id='" + ID + "'"))
