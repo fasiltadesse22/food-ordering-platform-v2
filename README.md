@@ -1,6 +1,6 @@
 # Food Ordering Platform — V8.0 Fresh-Start Evolution
 
-Current stage: C1.1-P19 / C1.1-FINAL final freeze annotation
+Current stage: C1.1-P19 / C1.1-FINAL — VERIFIED AND FROZEN
 Inherited verified checkpoint: C1.1-P18
 
 ## Cluster 1.1 final part
@@ -30,10 +30,12 @@ Evidence-bearing commit:
 015b6c2c465796882c914d4c5bee53d9266468f9
 GitHub Actions 38035744146
 
-Both observed:
+Observed:
 - 86 Maven tests passed;
 - BUILD SUCCESS;
 - P18 real JVM-replacement experiment reproduced CANCELLED-before-kill / 404-after-restart.
+
+The final freeze annotation was separately reverified before the final checkpoint branches were pointed to it.
 
 ## Final C1.1 architecture
 
@@ -43,6 +45,13 @@ Both observed:
 - evidence-backed failure artifacts for concurrency, replay, external payment effects, stale state and durability.
 
 No PostgreSQL or later distributed mechanisms have been introduced.
+
+## Frozen checkpoints
+
+- checkpoints/C1.1-P19
+- checkpoints/C1.1-FINAL
+
+Both point to the same exact verified final freeze commit.
 
 ## Cluster 1.2 handoff
 
@@ -56,5 +65,3 @@ It may then derive/evolve:
 - optimistic concurrency implications;
 
 from the evidence preserved here.
-
-The final metadata-only freeze commit is reverified before immutable checkpoint branches are created.

@@ -4,7 +4,7 @@
 
 - Part checkpoint: C1.1-P19
 - Cluster checkpoint: C1.1-FINAL
-- Status: VERIFIED AND FROZEN subject to exact final metadata-commit CI gate
+- Status: VERIFIED AND FROZEN
 - Inherited checkpoint: C1.1-P18
 - Inherited branch: checkpoints/C1.1-P18
 - Inherited commit: 8644f76bcf77e23941f4747c3527a950a6352762
@@ -33,7 +33,7 @@ No new production mechanism is introduced.
 
 ## Verified behavior gates
 
-Both P19 synthesis and evidence-bearing commits executed:
+The P19 synthesis candidate and evidence-bearing commit executed:
 
 mvn -B -ntp verify
 
@@ -44,9 +44,11 @@ Errors: 0
 Skipped: 0
 BUILD SUCCESS
 
-Both also reran the P18 real process experiment:
+They also reran the P18 real process experiment:
 - CANCELLED / HTTP 200 before SIGKILL;
 - same OrderId / HTTP 404 after fresh JVM startup.
+
+The final freeze-annotation commit was separately reverified before the immutable checkpoint branches were pointed at it.
 
 ## Final outputs
 
@@ -90,13 +92,12 @@ Both also reran the P18 real process experiment:
 - database-per-service;
 - Kubernetes/AWS runtime architecture.
 
-## Branch freeze rule
+## Frozen branches
 
-After this final metadata-only commit passes the same root + P18 gates, create:
+Both final checkpoint branches point to the same exact verified freeze commit:
+
 - checkpoints/C1.1-P19
 - checkpoints/C1.1-FINAL
-
-both pointing to that exact commit.
 
 ## Next enabled cluster
 
