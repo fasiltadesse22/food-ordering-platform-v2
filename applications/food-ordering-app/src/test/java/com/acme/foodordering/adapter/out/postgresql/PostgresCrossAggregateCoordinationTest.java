@@ -2,7 +2,10 @@ package com.acme.foodordering.adapter.out.postgresql;
 
 import com.acme.foodordering.domain.inventory.*;
 import com.acme.foodordering.domain.order.*;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.math.BigDecimal;
