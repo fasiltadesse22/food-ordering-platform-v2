@@ -1,10 +1,31 @@
-# C1.2-P22 — Cluster 1.2 FINAL checkpoint manifest and scope ledger
+# C1.3-P01 — Strategic domain discovery baseline checkpoint manifest
 
-Authoritative: Enterprise Distributed Systems Architecture & System Design V8.0 Master Roadmap + derived Cluster1.2 Parts1.2.1–1.2.22 uniform-depth blueprint.
-Inherited baseline: exact VERIFIED/FROZEN C1.2-P21 c1bfd5a3d11b0bcc000da33b77bd7f90a3970b6c. Branch work/C1.2-P22; create frozen checkpoints/C1.2-FINAL only on same SHA whose docs-bearing full CI is actually successful. Frozen branch needs independent CI on exact SHA; preserve main unchanged.
-Deliverable Type C: new PostgresCluster12ExitGateTest five tests spanning P12–P21 actual Order lifecycle/reconstitution/version/guard/invariant and P21 non-authoritative planning. No production behavior change.
-Type A: C1.2-FINAL architectural synthesis, ADR-0041, experiments/CI protocol, diagnostic runbook, Staff mastery assessment, evidence claim ledger, checkpoint manifest.
-Gate: 239 total Maven tests expected if five P22 pass atop P21's 234 (count is a prediction until observed); Java21; Testcontainers PostgreSQL16; inherited P18 memory process-restart negative and P12 actual PostgreSQL SIGKILL/fresh JVM positive. Report only observed numbers after CI log verification.
-Authority boundaries: Order production Postgres, independent RestaurantId/CustomerId references, local payment milestone only, Inventory pure planning + TEST-ONLY admission proof; no false external or stock guarantees.
-Known risk register: Order persistence write amplification; hot root version contention; no production Inventory authority/stock guarantee; no Restaurant operational truth; no actual Payment provider integration; limited OrderInvariants checks; no generic durable command idempotency, current JDBC per-operation DriverManager and no measured production SLO. Future decisions require business and workload evidence, not guesses.
-Next Cluster1.3 Bounded Contexts, Ubiquitous Language & Context Relationships: semantics/language and cross-context translation, not automatically microservices; inherit actual frozen C1.2-FINAL.
+## Baseline and contract
+Previous verified frozen checkpoint: `checkpoints/C1.2-FINAL`, SHA `65139ae1fc33df685b2e651539d500626589cb55`.
+Inherited C1.2 FINAL manifest remains available unchanged on its frozen branch.
+Scope: V8.0 Cluster 1.3, derived blueprint, Part 1.3.1 only.
+Engineering question: Why is a correct Order aggregate insufficient to establish the semantic architecture of the overall business?
+Type A + C; no production-code, API, schema or topology changes.
+
+## Predicted versus verified
+Prediction before change: caller-supplied valid OrderLine prices are accepted without any authoritative Catalog lookup, correct RestaurantId allows local acceptance, and recordPayment changes only local Order facts. Observed source structure supports these hypotheses. New P01 CI test results are NOT assumed; verification is required on exact commit.
+
+## Added
+`applications/food-ordering-app/src/test/java/com/acme/foodordering/application/semantics/Cluster13SemanticBaselineTest.java`
+`architecture/cluster-1.3/C1.3-P01-strategic-domain-baseline.md`
+`architecture/scenarios/C1.3-P01-capability-and-authority-matrix.md`
+`experiments/cluster-1.3/p01-semantic-authority-experiment.md`
+`architecture/evidence/C1.3-P01-evidence.md`
+
+## Actual testing gate (do not claim success until observed)
+GitHub verify.yml: `mvn -B -ntp verify`, P18 in-memory process-restart control, P12 PostgreSQL SIGKILL/fresh JVM durability control.
+Focused new test `Cluster13SemanticBaselineTest`. CI result and same-SHA verification must be reported externally once observed; frozen branch may only be created after green CI.
+
+## Business/architectural decision
+Keep the single real Spring Boot deployable and frozen Order aggregate architecture. The result is a source-grounded responsibility inventory, not declared bounded contexts. No Catalog business policy, Restaurant operating model, Inventory authority or Payment provider was manufactured.
+
+## Preserved fragilities and deferred mechanisms
+Price comes from current placement request; no authoritative Catalog validation. Restaurant acceptance has local ID guard only. Local PAYMENT_RECORDED is not provider truth; Inventory plan is not stock admission. Preserve as evidence for future evolution. No Kafka, Redis, Saga, Outbox, separate deployables/databases, or artificial ACL at P01.
+
+## Next handoff
+Part 1.3.2: classify business subdomains and problem-space capabilities without presupposing a bounded-context/service map; inherit this P01 exact verified SHA if CI passes.
