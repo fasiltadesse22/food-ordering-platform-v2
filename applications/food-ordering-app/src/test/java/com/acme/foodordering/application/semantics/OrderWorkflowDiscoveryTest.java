@@ -7,6 +7,8 @@ import com.acme.foodordering.application.service.OrderSnapshot;
 import com.acme.foodordering.application.service.OrderWorkflowService;
 import com.acme.foodordering.application.service.PlaceOrderService;
 import com.acme.foodordering.domain.order.OrderId;
+import com.acme.foodordering.domain.order.OrderStatus;
+import com.acme.foodordering.domain.order.InvalidOrderTransitionException;
 import com.acme.foodordering.domain.order.workflow.OrderWorkflowAction;
 import com.acme.foodordering.domain.order.workflow.WorkflowParticipant;
 import org.junit.jupiter.api.Test;
@@ -18,6 +20,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class OrderWorkflowDiscoveryTest {
 
@@ -27,7 +30,7 @@ class OrderWorkflowDiscoveryTest {
     private final OrderWorkflowService workflow = new OrderWorkflowService(repository, clock);
 
     @Test
-    void happyPathRecordsPaymentAcceptancePreparationAndCompletionHandoffs() {
+    void happyPathProgressesLegalLifecycleAndRecordsHandoffs() {
         var orderId = placeOrder();
 
         workflow.recordPayment(orderId);
@@ -50,7 +53,7 @@ class OrderWorkflowDiscoveryTest {
         );
 
         // P05 records workflow but deliberately does not yet formalize lifecycle state.
-        assertThat(completed.status()).isEqualTo("PLACED");
+        assertThat(completed.status()).isEqualTo("COMPLETED");
     }
 
     @Test
@@ -104,23 +107,33 @@ class OrderWorkflowDiscoveryTest {
     }
 
     @Test
-    void preStateMachineRecorderStillAllowsContradictoryAndOutOfOrderMilestones() {
-        var orderId = placeOrder();
+    void formerlyPermissivePreparationBeforeAcceptanceIsNowRejectedWithoutSave() {
+        var id = placeOrder();
 
-        workflow.recordPreparationStarted(orderId);
-        workflow.recordRestaurantAcceptance(orderId);
-        workflow.recordRestaurantRejection(orderId);
-        var completed = workflow.recordCompletion(orderId);
+        assertThatThrownBy(() -> workflow.recordPreparationStarted(id))
+                .isInstanceOf(InvalidOrderTransitionException.class)
+                .hasMessageContaining("PREPARATION_STARTED")
+                .hasMessageContaining("PLACED");
 
-        assertThat(actions(completed)).containsExactly(
-                OrderWorkflowAction.PREPARATION_STARTED,
-                OrderWorkflowAction.RESTAURANT_ACCEPTED,
-                OrderWorkflowAction.RESTAURANT_REJECTED,
-                OrderWorkflowAction.ORDER_COMPLETED
-        );
+        var current = repository.findCurrentById(id).orElseThrow();
+        assertThat(current.status()).isEqualTo(OrderStatus.PLACED);
+        assertThat(current.workflowOccurrences()).isEmpty();
+        assertThat(repository.size()).isEqualTo(1);
+    }
 
-        // This PASS is evidence of a missing state-machine guard, not a business guarantee.
-        assertThat(completed.status()).isEqualTo("PLACED");
+    @Test
+    void acceptanceThenRejectionCannotProduceContradictoryDecisions() {
+        var id = placeOrder();
+        workflow.recordRestaurantAcceptance(id);
+
+        assertThatThrownBy(() -> workflow.recordRestaurantRejection(id))
+                .isInstanceOf(InvalidOrderTransitionException.class);
+
+        var current = repository.findCurrentById(id).orElseThrow();
+        assertThat(current.status()).isEqualTo(OrderStatus.ACCEPTED);
+        assertThat(current.workflowOccurrences())
+                .extracting(occurrence -> occurrence.action())
+                .containsExactly(OrderWorkflowAction.RESTAURANT_ACCEPTED);
     }
 
     private OrderId placeOrder() {
