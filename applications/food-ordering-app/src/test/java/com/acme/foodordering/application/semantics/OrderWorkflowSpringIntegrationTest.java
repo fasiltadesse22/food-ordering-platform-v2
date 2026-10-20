@@ -60,6 +60,6 @@ class OrderWorkflowSpringIntegrationTest {
                         OrderWorkflowAction.ORDER_COMPLETED
                 );
 
-        assertThat(observed.status()).isEqualTo("PLACED");
+        assertThat(observed.status()).isEqualTo("COMPLETED");
     }
 }
