@@ -123,10 +123,11 @@ public final class Order {
     }
 
     /**
-     * Part 1.1.6: lifecycle legality lives in the domain, not the HTTP adapter.
-     * A denied command creates neither a successor representation nor an
-     * accepted workflow occurrence. Persistence is invoked only after success.
-     * The read–decide–save sequence remains concurrency-naive deliberately.
+     * P07 contract order:
+     * 1. classify business preconditions before an accepted mutation,
+     * 2. construct exactly one immutable successor only on success,
+     * 3. verify its postconditions before the application can save it.
+     * Sequential, process-local correctness only; read–decide–save still races.
      */
     private Order transition(
             OrderWorkflowAction action,
@@ -134,75 +135,17 @@ public final class Order {
             Instant occurredAt
     ) {
         Objects.requireNonNull(occurredAt, "occurredAt must not be null");
-        OrderStatus next = nextState(action);
+        Objects.requireNonNull(participant, "participant must not be null");
+        OrderStatus next = OrderTransitionContract.requirePreconditions(this, action);
+
         var updated = new ArrayList<>(workflowOccurrences);
         updated.add(new OrderWorkflowOccurrence(action, participant, occurredAt));
-        return new Order(id, customerId, restaurantId, lines, next, placedAt, updated);
-    }
+        Order successor = new Order(id, customerId, restaurantId, lines, next, placedAt, updated);
 
-    private OrderStatus nextState(OrderWorkflowAction action) {
-        return switch (action) {
-            case PAYMENT_RECORDED -> {
-                // Money is a separate authority. This is only the local
-                // payment-recorded milestone; never treat it as provider capture.
-                if ((status != OrderStatus.PLACED && status != OrderStatus.ACCEPTED)
-                        || has(OrderWorkflowAction.PAYMENT_RECORDED)) {
-                    throw illegal(action, "payment is recordable once before preparation");
-                }
-                yield status;
-            }
-            case RESTAURANT_ACCEPTED -> {
-                requireState(action, OrderStatus.PLACED);
-                yield OrderStatus.ACCEPTED;
-            }
-            case RESTAURANT_REJECTED -> {
-                requireState(action, OrderStatus.PLACED);
-                yield OrderStatus.REJECTED;
-            }
-            case ORDER_CANCELLED -> {
-                if (status != OrderStatus.PLACED && status != OrderStatus.ACCEPTED) {
-                    throw illegal(action, "cancellation only while placed or accepted");
-                }
-                yield OrderStatus.CANCELLED;
-            }
-            case PREPARATION_STARTED -> {
-                requireState(action, OrderStatus.ACCEPTED);
-                if (!has(OrderWorkflowAction.PAYMENT_RECORDED)) {
-                    throw illegal(action, "this provisional P06 policy requires recorded payment");
-                }
-                yield OrderStatus.PREPARING;
-            }
-            case ORDER_COMPLETED -> {
-                requireState(action, OrderStatus.PREPARING);
-                yield OrderStatus.COMPLETED;
-            }
-            case REFUND_REQUESTED -> {
-                if (status != OrderStatus.CANCELLED && status != OrderStatus.REJECTED) {
-                    throw illegal(action, "refund request follows a cancelled or rejected order");
-                }
-                if (!has(OrderWorkflowAction.PAYMENT_RECORDED)
-                        || has(OrderWorkflowAction.REFUND_REQUESTED)) {
-                    throw illegal(action, "requires prior recorded payment and no earlier request");
-                }
-                // A refund request does not reverse a terminal fulfillment
-                // state or prove an external provider completed a refund.
-                yield status;
-            }
-        };
-    }
-
-    private boolean has(OrderWorkflowAction action) {
-        return workflowOccurrences.stream().anyMatch(x -> x.action() == action);
-    }
-
-    private void requireState(OrderWorkflowAction action, OrderStatus required) {
-        if (status != required) {
-            throw illegal(action, "requires source state " + required);
-        }
-    }
-
-    private InvalidOrderTransitionException illegal(OrderWorkflowAction action, String reason) {
-        return new InvalidOrderTransitionException(status, action, reason);
+        OrderTransitionContract.requirePostconditions(
+                this, successor, action, participant, occurredAt, next
+        );
+        return successor;
     }
 
     public OrderId id() {
