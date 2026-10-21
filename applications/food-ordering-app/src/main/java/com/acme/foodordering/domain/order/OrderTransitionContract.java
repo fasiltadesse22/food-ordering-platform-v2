@@ -44,9 +44,8 @@ final class OrderTransitionContract {
             }
             case PREPARATION_STARTED -> {
                 require(status, OrderStatus.ACCEPTED, action);
-                if (!has(before, OrderWorkflowAction.PAYMENT_RECORDED)) {
-                    throw illegal(status, action, "this provisional P07 policy requires recorded payment");
-                }
+                // P07 CONTROLLED MUTANT ONLY: payment guard intentionally bypassed.
+                // This branch is never accepted as a production or P08 baseline.
                 yield OrderStatus.PREPARING;
             }
             case ORDER_COMPLETED -> {
