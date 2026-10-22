@@ -176,6 +176,15 @@ public final class Order {
         return workflowOccurrences;
     }
 
+    /**
+     * Part 1.1.8: distinguish terminal fulfillment decisions from separate
+     * financial follow-up milestones. This is an interpretation of local
+     * history, not an authoritative provider refund/capture status.
+     */
+    public OrderClosure closure() {
+        return OrderClosure.from(this);
+    }
+
     public BigDecimal total() {
         return lines.stream()
                 .map(OrderLine::lineTotal)
