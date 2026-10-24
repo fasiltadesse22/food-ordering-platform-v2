@@ -42,13 +42,4 @@ public class ApplicationConfiguration {
         return new OrderWorkflowService(orderRepository, clock);
     }
 
-    @Bean
-    OrderWorkflowUseCase orderWorkflowUseCase(OrderWorkflowService service) {
-        return service;
-    }
-
-    @Bean
-    OrderWorkflowDecisionUseCase orderWorkflowDecisionUseCase(OrderWorkflowService service) {
-        return service;
-    }
 }
