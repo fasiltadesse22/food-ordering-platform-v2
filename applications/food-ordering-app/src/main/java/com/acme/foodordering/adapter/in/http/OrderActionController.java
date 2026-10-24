@@ -28,7 +28,12 @@ public final class OrderActionController {
 
     @PostMapping("/{action}")
     public ResponseEntity<?> execute(@PathVariable String orderId, @PathVariable String action) {
-        final OrderId id = OrderId.from(orderId);
+        final OrderId id;
+        try {
+            id = OrderId.from(orderId);
+        } catch (IllegalArgumentException invalid) {
+            throw new InvalidOrderRequestException("invalid order identifier");
+        }
         final OrderWorkflowAction parsed;
         try {
             parsed = OrderWorkflowAction.valueOf(action);
