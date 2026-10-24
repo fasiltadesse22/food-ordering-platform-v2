@@ -29,6 +29,19 @@ public class OrderController {
 
     @PostMapping
     public ResponseEntity<?> place(@RequestBody PlaceOrderRequest request) {
+        if (request == null || request.customerId() == null || request.customerId().isBlank()
+                || request.restaurantId() == null || request.restaurantId().isBlank()
+                || request.lines() == null || request.lines().isEmpty()) {
+            throw new InvalidOrderRequestException("order requires customer, restaurant and lines");
+        }
+        for (var line : request.lines()) {
+            if (line == null || line.menuItemId() == null || line.menuItemId().isBlank()
+                    || line.name() == null || line.name().isBlank()
+                    || line.quantity() <= 0 || line.unitPrice() == null
+                    || line.unitPrice().signum() < 0) {
+                throw new InvalidOrderRequestException("invalid order line");
+            }
+        }
         var command = new PlaceOrderCommand(
                 request.customerId(),
                 request.restaurantId(),
@@ -59,6 +72,10 @@ public class OrderController {
 
     @GetMapping("/{orderId}")
     public OrderResponse get(@PathVariable String orderId) {
-        return OrderResponse.from(getOrderUseCase.get(OrderId.from(orderId)));
+        try {
+            return OrderResponse.from(getOrderUseCase.get(OrderId.from(orderId)));
+        } catch (IllegalArgumentException invalid) {
+            throw new InvalidOrderRequestException("invalid order identifier");
+        }
     }
 }
