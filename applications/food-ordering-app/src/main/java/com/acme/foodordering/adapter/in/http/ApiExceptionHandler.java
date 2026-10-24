@@ -6,6 +6,7 @@ import com.acme.foodordering.domain.order.OrderTransitionContractViolationExcept
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
@@ -15,6 +16,8 @@ public class ApiExceptionHandler {
     ProblemDetail handleNotFound(OrderNotFoundException exception) {
         var detail = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage());
         detail.setTitle("Order not found");
+        detail.setProperty("kind", "NOT_FOUND");
+        detail.setProperty("code", "ORDER_NOT_FOUND");
         return detail;
     }
 
@@ -44,10 +47,20 @@ public class ApiExceptionHandler {
         return detail;
     }
 
-    @ExceptionHandler({IllegalArgumentException.class, NullPointerException.class})
-    ProblemDetail handleBadRequest(RuntimeException exception) {
+    @ExceptionHandler(InvalidOrderRequestException.class)
+    ProblemDetail handleBadRequest(InvalidOrderRequestException exception) {
         var detail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
         detail.setTitle("Invalid order request");
+        detail.setProperty("kind", "INVALID_INPUT");
+        return detail;
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    ProblemDetail handleUnreadableJson(HttpMessageNotReadableException exception) {
+        var detail = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST, "Invalid request body");
+        detail.setTitle("Invalid request body");
+        detail.setProperty("kind", "INVALID_INPUT");
         return detail;
     }
     @ExceptionHandler(Exception.class)
