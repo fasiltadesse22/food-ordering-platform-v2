@@ -84,6 +84,31 @@ class OrderFailureClassificationHttpTest {
                 .andExpect(jsonPath("$.kind").value("INVALID_INPUT"));
     }
 
+    @Test void malformedOrderIdReturns400InvalidInputNot500() throws Exception {
+        mockMvc.perform(post("/orders/not-a-uuid/actions/ORDER_CANCELLED"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.kind").value("INVALID_INPUT"));
+    }
+
+    @Test void unexpectedIllegalArgumentExceptionFromUseCaseIs500Not400() throws Exception {
+        OrderWorkflowDecisionUseCase broken = (id, action) -> {
+            throw new IllegalArgumentException("internal invariant logic failure SECRET");
+        };
+        var mvc = MockMvcBuilders.standaloneSetup(new OrderActionController(broken))
+                .setControllerAdvice(new ApiExceptionHandler()).build();
+        mvc.perform(post("/orders/00000000-0000-0000-0000-000000000003/actions/ORDER_CANCELLED"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.kind").value("TECHNICAL_FAILURE"))
+                .andExpect(jsonPath("$.detail").value("Internal request processing failed"));
+    }
+
+    @Test void invalidPlaceOrderInputIs400NotBusinessConflict() throws Exception {
+        mockMvc.perform(post("/orders").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"customerId\":\"c\",\"restaurantId\":\"r\",\"lines\":[]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.kind").value("INVALID_INPUT"));
+    }
+
     @Test void unexpectedExceptionMapsToSafeHttp500WithoutLeakingInternalDetail() throws Exception {
         OrderWorkflowDecisionUseCase failing = (id, action) -> {
             throw new IllegalStateException("internal database connection SECRET");
