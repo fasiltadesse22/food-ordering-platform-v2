@@ -36,6 +36,9 @@ public final class Order {
         this.status = Objects.requireNonNull(status);
         this.placedAt = Objects.requireNonNull(placedAt);
         this.workflowOccurrences = List.copyOf(workflowOccurrences);
+        // P10: local aggregate-wide semantic integrity is independent of
+        // valid HTTP fields, non-null columns, and the operation-local guard.
+        OrderBusinessInvariants.requireValid(this.status, this.workflowOccurrences);
     }
 
     public static Order place(
