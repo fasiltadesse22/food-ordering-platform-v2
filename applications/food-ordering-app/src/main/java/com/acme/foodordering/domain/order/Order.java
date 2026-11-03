@@ -126,24 +126,57 @@ public final class Order {
     }
 
     /**
-     * P07 contract order:
-     * 1. classify business preconditions before an accepted mutation,
-     * 2. construct exactly one immutable successor only on success,
-     * 3. verify its postconditions before the application can save it.
-     * Sequential, process-local correctness only; read–decide–save still races.
+     * P11 local logical atomicity: a new current Order is one immutable value
+     * containing both the target fulfillment state and the accepted occurrence.
+     * No mutation of the prior Order or publication of intermediate values.
+     * The real repository still has no atomic read-guard-save or transaction.
      */
     private Order transition(
             OrderWorkflowAction action,
             WorkflowParticipant participant,
             Instant occurredAt
     ) {
+        return assembleTransition(action, participant, occurredAt, stage -> {});
+    }
+
+    /**
+     * Package-private fault seam for deterministic P11 experiments.
+     * This is NOT an application/public business API. The probe runs before
+     * the new successor is returned and before any repository publication.
+     */
+    enum AssemblyStage {
+        TARGET_DECIDED,
+        FACT_STAGED,
+        SUCCESSOR_CONSTRUCTED
+    }
+
+    @FunctionalInterface
+    interface AssemblyProbe {
+        void at(AssemblyStage stage);
+    }
+
+    Order assembleTransition(
+            OrderWorkflowAction action,
+            WorkflowParticipant participant,
+            Instant occurredAt,
+            AssemblyProbe probe
+    ) {
         Objects.requireNonNull(occurredAt, "occurredAt must not be null");
         Objects.requireNonNull(participant, "participant must not be null");
+        Objects.requireNonNull(probe, "assembly probe must not be null");
+        // Admission is a business decision, not yet an accepted mutation.
         OrderStatus next = OrderTransitionContract.requirePreconditions(this, action);
+        probe.at(AssemblyStage.TARGET_DECIDED);
 
+        // The temporary list is inaccessible to callers; no partial status
+        // or partial fact is written to this immutable source Order.
         var updated = new ArrayList<>(workflowOccurrences);
         updated.add(new OrderWorkflowOccurrence(action, participant, occurredAt));
+        probe.at(AssemblyStage.FACT_STAGED);
+
+        // Constructor validates the complete status/history pair as one value.
         Order successor = new Order(id, customerId, restaurantId, lines, next, placedAt, updated);
+        probe.at(AssemblyStage.SUCCESSOR_CONSTRUCTED);
 
         OrderTransitionContract.requirePostconditions(
                 this, successor, action, participant, occurredAt, next
