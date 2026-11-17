@@ -171,6 +171,7 @@ class OrderConflictingOperationsConcurrencyTest {
                 s -> s.recordPreparationStarted(original.id()),
                 s -> s.recordCancellation(original.id()));
         assertBothRead(original.id(), x, OrderStatus.ACCEPTED);
+        System.out.println("P13 TRACE PREPARE_THEN_CANCEL " + x.trace() + " | desiredAcceptedHistoryInvariant=FAILED");
         assertWriteOrder(x, "A");
         assertThat(x.a().status()).isEqualTo("PREPARING");
         assertThat(x.b().status()).isEqualTo("CANCELLED");
@@ -188,6 +189,7 @@ class OrderConflictingOperationsConcurrencyTest {
                 s -> s.recordPreparationStarted(original.id()),
                 s -> s.recordCancellation(original.id()));
         assertBothRead(original.id(), x, OrderStatus.ACCEPTED);
+        System.out.println("P13 TRACE CANCEL_THEN_PREPARE " + x.trace() + " | desiredTerminalityInvariant=FAILED");
         assertWriteOrder(x, "B");
         assertThat(x.b().status()).isEqualTo("CANCELLED");
         assertThat(x.a().status()).isEqualTo("PREPARING");
@@ -203,6 +205,7 @@ class OrderConflictingOperationsConcurrencyTest {
                 s -> s.recordCancellation(original.id()),
                 s -> s.recordPayment(original.id()));
         assertBothRead(original.id(), x, OrderStatus.PLACED);
+        System.out.println("P13 TRACE CANCEL_THEN_LOCAL_PAYMENT " + x.trace() + " | desiredTerminalityInvariant=FAILED");
         assertWriteOrder(x, "A");
         assertThat(x.a().status()).isEqualTo("CANCELLED");
         assertThat(x.b().status()).isEqualTo("PLACED");
@@ -218,6 +221,7 @@ class OrderConflictingOperationsConcurrencyTest {
                 s -> s.recordCancellation(original.id()),
                 s -> s.recordPayment(original.id()));
         assertBothRead(original.id(), x, OrderStatus.PLACED);
+        System.out.println("P13 TRACE LOCAL_PAYMENT_THEN_CANCEL " + x.trace() + " | desiredAcceptedHistoryInvariant=FAILED");
         assertWriteOrder(x, "B");
         assertThat(x.b().workflow()).extracting(OrderSnapshot.WorkflowOccurrence::action)
                 .contains(OrderWorkflowAction.PAYMENT_RECORDED);
